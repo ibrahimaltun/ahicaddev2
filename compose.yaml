@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: ahicadde-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ahicadde
+      POSTGRES_USER: ahicadde
+      POSTGRES_PASSWORD: ahicadde_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
