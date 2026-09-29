@@ -89,7 +89,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo 'Production Docker image''ları build ediliyor...'
+                echo 'Production Docker image build ediliyor...'
 
                 sh '''
                     set -e
