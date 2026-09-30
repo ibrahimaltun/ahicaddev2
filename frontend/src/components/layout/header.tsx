@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 const navigation = [
     { href: "/urunler", label: "Ürünler" },
@@ -8,6 +12,18 @@ const navigation = [
 ];
 
 export function Header() {
+    const {
+        user,
+        loading,
+        isAuthenticated,
+        isAdmin,
+        logout,
+    } = useAuth();
+
+    async function handleLogout() {
+        await logout();
+    }
+
     return (
         <header className="sticky top-0 z-50 border-b border-neutral-200/80 bg-white/95 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
@@ -35,16 +51,55 @@ export function Header() {
                 </nav>
 
                 <div className="flex items-center gap-2">
-                    <Link
-                        href="/giris"
-                        className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 sm:inline-flex"
-                    >
-                        Giriş Yap
-                    </Link>
+                    {!loading && !isAuthenticated && (
+                        <>
+                            <Link
+                                href="/login"
+                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 sm:inline-flex"
+                            >
+                                Giriş Yap
+                            </Link>
+
+                            <Link
+                                href="/register"
+                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 sm:inline-flex"
+                            >
+                                Kayıt Ol
+                            </Link>
+                        </>
+                    )}
+
+                    {!loading && isAuthenticated && (
+                        <>
+                            <Link
+                                href="/account"
+                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 sm:inline-flex"
+                            >
+                                {user?.first_name || "Hesabım"}
+                            </Link>
+
+                            {isAdmin && (
+                                <Link
+                                    href="/admin"
+                                    className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 sm:inline-flex"
+                                >
+                                    Yönetim
+                                </Link>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 sm:inline-flex"
+                            >
+                                Çıkış
+                            </button>
+                        </>
+                    )}
 
                     <Link
                         href="/sepet"
-                        className="rounded-full px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-200"
+                        className="rounded-full bg-neutral-250 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-200"
                     >
                         Sepet
                     </Link>
