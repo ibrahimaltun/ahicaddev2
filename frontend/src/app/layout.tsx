@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { AuthProvider } from "@/features/auth/hooks/AuthProvider";
 
 import "./globals.css";
 
@@ -83,13 +84,15 @@ export default function RootLayout({
   return (
     <html lang="tr" className={geist.variable}>
       <body>
-        <Header />
+        <AuthProvider>
+          <Header />
 
-        <main className="flex-1">
-          {children}
-        </main>
+          <main className="flex-1">
+            {children}
+          </main>
 
-        <Footer />
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
