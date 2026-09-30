@@ -1,8 +1,5 @@
 import type { Product } from "./types";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-
 export interface ProductListParams {
     page?: number;
     limit?: number;
@@ -24,7 +21,7 @@ export async function getProducts(
     const query = searchParams.toString();
 
     const response = await fetch(
-        `${API_BASE_URL}/products${query ? `?${query}` : ""}`,
+        `/products${query ? `?${query}` : ""}`,
         {
             next: {
                 revalidate: 60,
@@ -43,7 +40,7 @@ export async function getProduct(
     slug: string,
 ): Promise<Product> {
     const response = await fetch(
-        `${API_BASE_URL}/products/${encodeURIComponent(slug)}`,
+        `/products/${encodeURIComponent(slug)}`,
         {
             next: {
                 revalidate: 60,
