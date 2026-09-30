@@ -34,7 +34,7 @@ export default function AccountPage() {
 
                 <Link
                     href="/login"
-                    className="mt-6 inline-flex rounded-xl bg-neutral-950 px-5 py-3 text-sm font-medium text-white"
+                    className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 sm:inline-flex"
                 >
                     Giriş Yap
                 </Link>

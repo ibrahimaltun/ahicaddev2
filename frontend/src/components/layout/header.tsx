@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useCartStore } from "@/features/cart/store";
 
 const navigation = [
     { href: "/urunler", label: "Ürünler" },
@@ -23,6 +24,15 @@ export function Header() {
     async function handleLogout() {
         await logout();
     }
+
+    const cartItemCount = useCartStore(
+        (state) =>
+            state.items.reduce(
+                (total, item) => total + item.quantity,
+                0,
+            ),
+    );
+
 
     return (
         <header className="sticky top-0 z-50 border-b border-neutral-200/80 bg-white/95 backdrop-blur">
@@ -98,10 +108,16 @@ export function Header() {
                     )}
 
                     <Link
-                        href="/sepet"
-                        className="rounded-full bg-neutral-250 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-200"
+                        href="/cart"
+                        className="relative rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
                     >
                         Sepet
+
+                        {cartItemCount > 0 && (
+                            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-xs font-semibold text-neutral-950">
+                                {cartItemCount}
+                            </span>
+                        )}
                     </Link>
                 </div>
             </div>
