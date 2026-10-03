@@ -21,6 +21,7 @@ class ProductCreate(BaseModel):
     price: Decimal = Field(gt=0)
     stock: int = Field(default=0, ge=0)
     category_id: int | None = None
+    brand_id: int | None = None
 
 
 class ProductResponse(BaseModel):

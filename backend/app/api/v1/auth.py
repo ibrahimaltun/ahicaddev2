@@ -48,7 +48,7 @@ def register(
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
+            detail="Bu eposta zaten kayıtlı",
         )
 
     user = User(
@@ -84,13 +84,13 @@ def login(
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="E-posta veya şifre hatalı",
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive",
+            detail="Kullanıcı hesabı aktif değil",
         )
 
     token = create_access_token(
@@ -102,13 +102,13 @@ def login(
         key="access_token",
         value=token,
         httponly=True,
-        secure=False,  # production'da True
+        secure=True,
         samesite="lax",
         max_age=60 * 30,
     )
 
     return {
-        "message": "Login successful",
+        "message": "Giriş başarılı",
         "user": UserResponse.model_validate(user),
     }
 
@@ -120,7 +120,7 @@ def logout(response: Response):
     )
 
     return {
-        "message": "Logout successful",
+        "message": "Çıkış başarılı",
     }
 
 

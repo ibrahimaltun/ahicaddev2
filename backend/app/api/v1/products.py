@@ -37,6 +37,7 @@ def create_product(
         price=product_data.price,
         stock=product_data.stock,
         category_id=product_data.category_id,
+        brand_id=product_data.brand_id,
     )
 
     db.add(product)
@@ -51,10 +52,27 @@ def create_product(
     response_model=list[ProductResponse],
 )
 def list_products(
+    page: int = 1,
+    limit: int = 20,
     db: Session = Depends(get_db),
 ):
+    if page < 1:
+        page = 1
+
+    if limit < 1:
+        limit = 20
+
+    if limit > 100:
+        limit = 100
+
+    offset = (page - 1) * limit
+
     products = db.scalars(
-        select(Product).where(Product.is_active.is_(True)).order_by(Product.id.desc())
+        select(Product)
+        .where(Product.is_active.is_(True))
+        .order_by(Product.id.desc())
+        .offset(offset)
+        .limit(limit)
     ).all()
 
     return products
