@@ -8,7 +8,7 @@ ecom-env/
 # Environment
 .env
 .env.*
-!.env.prod
+.env.prod
 
 # Node
 node_modules/
