@@ -36,7 +36,7 @@ export default function CartPage() {
 
                     <Link
                         href="/products"
-                        className="mt-6 inline-flex rounded-xl bg-neutral-950 px-5 py-3 text-sm font-medium text-white"
+                        className="mt-6 inline-flex rounded-xl bg-neutral-750 px-5 py-3 text-sm font-medium text-white"
                     >
                         Alışverişe Devam Et
                     </Link>

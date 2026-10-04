@@ -3,6 +3,8 @@ from app.models.category import Category
 from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.user import User
+from app.models.cart import Cart
+from app.models.cart_item import CartItem
 
 __all__ = [
     "Brand",
@@ -10,4 +12,6 @@ __all__ = [
     "Product",
     "ProductImage",
     "User",
+    "Cart",
+    "CartItem",
 ]

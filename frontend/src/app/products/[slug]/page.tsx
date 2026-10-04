@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { getProduct } from "@/features/products/api";
 
+export const dynamic = "force-dynamic";
+
 interface ProductPageProps {
     params: Promise<{
         slug: string;

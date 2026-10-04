@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { getProducts } from "@/features/products/api";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProductsPage() {
     const products = await getProducts({
         page: 1,

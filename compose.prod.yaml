@@ -3,7 +3,7 @@ name: ahicadde-prod
 services:
   postgres:
     image: postgres:17
-    container_name: ahicadde-postgres
+    container_name: ahicadde-prod-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ahicadde
@@ -19,7 +19,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ahicadde-redis
+    container_name: ahicadde-prod-redis
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -31,10 +31,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: ahicadde-backend
+    container_name: ahicadde-prod-backend
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.prod
     environment:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
@@ -48,16 +48,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: ahicadde-frontend
+    container_name: ahicadde-prod-frontend
     restart: unless-stopped
     depends_on:
       - backend
     expose:
       - "3000"
+    # frontend'in FastAPI'ye hangi adresten bağlanacağını belirler
+    environment:
+      API_INTERNAL_URL: http://backend:8000/api/v1
 
   nginx:
     image: nginx:1.29-alpine
-    container_name: ahicadde-nginx
+    container_name: ahicadde-prod-nginx
     restart: unless-stopped
     depends_on:
       - frontend

@@ -1,12 +1,12 @@
 services:
   postgres:
     image: postgres:17
-    container_name: ahicadde-postgres
+    container_name: ahicadde-local-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ahicadde
       POSTGRES_USER: ahicadde
-      POSTGRES_PASSWORD: ahicadde_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,14 +19,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ahicadde-redis
+    container_name: ahicadde-local-redis
     restart: unless-stopped
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: ahicadde-backend
+    container_name: ahicadde-local-backend
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -42,16 +42,18 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: ahicadde-frontend
+    container_name: ahicadde-local-frontend
     restart: unless-stopped
     depends_on:
       - backend
     expose:
       - "3000"
+    environment:
+      API_INTERNAL_URL: http://backend:8000/api/v1
 
   nginx:
     image: nginx:1.29-alpine
-    container_name: ahicadde-nginx
+    container_name: ahicadde-local-nginx
     restart: unless-stopped
     depends_on:
       - frontend

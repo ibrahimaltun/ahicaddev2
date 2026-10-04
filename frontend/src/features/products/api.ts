@@ -1,5 +1,9 @@
 import type { Product } from "./types";
 
+const API_BASE_URL =
+    process.env.API_INTERNAL_URL ||
+    "http://localhost:8000/api/v1";
+
 export interface ProductListParams {
     page?: number;
     limit?: number;
@@ -21,7 +25,7 @@ export async function getProducts(
     const query = searchParams.toString();
 
     const response = await fetch(
-        `/products${query ? `?${query}` : ""}`,
+        `${API_BASE_URL}/products${query ? `?${query}` : ""}`,
         {
             next: {
                 revalidate: 60,
@@ -30,7 +34,11 @@ export async function getProducts(
     );
 
     if (!response.ok) {
-        throw new Error("Failed to fetch products.");
+        const errorText = await response.text();
+
+        throw new Error(
+            `Ürünler çekilirken bir hata oluştu. Status: ${response.status}, Detail: ${errorText}`,
+        );
     }
 
     return response.json();
@@ -40,7 +48,7 @@ export async function getProduct(
     slug: string,
 ): Promise<Product> {
     const response = await fetch(
-        `/products/${encodeURIComponent(slug)}`,
+        `${API_BASE_URL}/products/${encodeURIComponent(slug)}`,
         {
             next: {
                 revalidate: 60,
@@ -49,7 +57,7 @@ export async function getProduct(
     );
 
     if (!response.ok) {
-        throw new Error("Failed to fetch product.");
+        throw new Error("Ürünler çekilirken bir hata oluştu.");
     }
 
     return response.json();

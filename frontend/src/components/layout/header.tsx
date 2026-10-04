@@ -109,7 +109,7 @@ export function Header() {
 
                     <Link
                         href="/cart"
-                        className="relative rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+                        className="relative rounded-full bg-neutral-750 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-200"
                     >
                         Sepet
 
