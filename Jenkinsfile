@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         COMPOSE_FILE = 'compose.prod.yaml'
-        DEPLOY_DIR = '/opt/ahicadde'
+        DEPLOY_DIR = '/opt/ahicaddev2'
     }
 
     stages {
@@ -27,12 +27,12 @@ pipeline {
                     mkdir -p "${DEPLOY_DIR}"
 
                     echo "Mevcut production dosyaları temizleniyor..."
-                    echo "NOT: .env korunacak."
+                    echo "NOT: .env.prod korunacak."
 
                     find "${DEPLOY_DIR}" \
                         -mindepth 1 \
                         -maxdepth 1 \
-                        ! -name '.env' \
+                        ! -name '.env.prod' \
                         -exec rm -rf {} +
 
                     echo "Yeni kaynak kodu deployment dizinine kopyalanıyor..."
@@ -58,15 +58,15 @@ pipeline {
                 sh '''
                     set -e
 
-                    if [ ! -f "${DEPLOY_DIR}/.env" ]; then
-                        echo "HATA: ${DEPLOY_DIR}/.env bulunamadı."
+                    if [ ! -f "${DEPLOY_DIR}/.env.prod" ]; then
+                        echo "HATA: ${DEPLOY_DIR}/.env.prod bulunamadı."
                         echo "Production secret dosyası oluşturulmadan deployment yapılamaz."
                         exit 1
                     fi
 
-                    chmod 600 "${DEPLOY_DIR}/.env"
+                    chmod 600 "${DEPLOY_DIR}/.env.prod"
 
-                    echo "Production .env bulundu."
+                    echo "Production .env.prod bulundu."
                 '''
             }
         }
