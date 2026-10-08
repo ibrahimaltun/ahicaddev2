@@ -4,6 +4,9 @@ pipeline {
     environment {
         COMPOSE_FILE = 'compose.prod.yaml'
         DEPLOY_DIR = '/opt/ahicaddev2'
+        POSTGRES_PASSWORD = credentials('prod-postgres-password')
+        DATABASE_URL      = credentials('prod-database-url')
+        JWT_SECRET        = credentials('prod-jwt-secret')
     }
 
     stages {
@@ -111,7 +114,10 @@ pipeline {
                     set -e
 
                     cd "${DEPLOY_DIR}"
-
+                    
+                    POSTGRES_PASSWORD='${POSTGRES_PASSWORD}' \
+                    DATABASE_URL='${DATABASE_URL}' \
+                    JWT_SECRET='${JWT_SECRET}' \
                     docker compose \
                         -f "${COMPOSE_FILE}" \
                         up -d --remove-orphans
