@@ -5,6 +5,7 @@ from app.models.product_image import ProductImage
 from app.models.user import User
 from app.models.cart import Cart
 from app.models.cart_item import CartItem
+from app.models.seller_application import SellerApplication
 
 __all__ = [
     "Brand",
@@ -14,4 +15,5 @@ __all__ = [
     "User",
     "Cart",
     "CartItem",
+    "SellerApplication",
 ]
