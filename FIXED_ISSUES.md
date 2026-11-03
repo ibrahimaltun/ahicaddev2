@@ -160,7 +160,51 @@ New `src/features/seller-applications/` module (types + client API matching `Sel
 
 ## 6. Remaining Recommendations (not changed, by design)
 
-1. **Frontend cart is still localStorage-based** (`features/cart/store.ts`). The backend cart API implemented in this round is contract-ready; migrating the storefront to server-side carts (sync on login, merge guest cart) is a product decision and was deliberately left as the next feature step.
+1. ~~**Frontend cart is still localStorage-based**~~ **✅ Done (addendum §7):** cart is now server-backed via `CartProvider`; guest-cart merge on login remains a possible UX refinement.
 2. `.env` with dev-only secrets is still tracked in git. For production, rotate `JWT_SECRET`/`POSTGRES_PASSWORD` and untrack the file (`git rm --cached .env`).
 3. Product images use plain `<img>` (3 lint warnings). Switching to `next/image` requires a configured remote loader for seller-supplied URLs.
-4. The frontend `AddToCartButton` is not yet used inside `products/[slug]` — wiring it up is a natural follow-up once server-side carts land.
+4. ~~**The frontend `AddToCartButton` is not yet used inside `products/[slug]`**~~ **✅ Done (addendum §7):** wired into `products/[slug]` against the server cart.
+
+---
+
+## 7. Addendum — Checkout / Orders / Payment (2026-11-03)
+
+The purchase funnel (previously: cart UI only, no checkout, no `Order` model, no payment) was completed end-to-end.
+
+### 7.1 Backend — Orders
+
+- **New models** `app/models/order.py` + `order_item.py`: `orders` (user FK CASCADE, `status`, `payment_method`, `total_price Numeric(12,2)`, shipping snapshot columns, timestamps) and `order_items` (order FK CASCADE, product FK **SET NULL** + `product_name`/`unit_price` **price snapshot**, quantity). Registered in `app/models/__init__.py`.
+- **New migration `d4e5f6a7b8c9`** creates both tables (chained on `b7c8d9e0f1a2`); `alembic check` passes with zero drift.
+- **New API `app/api/v1/orders.py`** (registered in `main.py`):
+  - `POST /api/v1/orders` — checkout: validates the cart is non-empty, **row-locks products (`with_for_update`)**, validates stock (409 with remaining-stock message), creates the order in `pending_payment` with **atomic stock decrement + price snapshots + cart emptied** in a single transaction.
+  - `GET /api/v1/orders` — current user's history (newest first, ownership-scoped).
+  - `GET /api/v1/orders/{id}` — detail; other users' orders return **404** (admin may view any).
+  - `POST /api/v1/orders/{id}/cancel` — owner cancels while `pending_payment`/`processing`; **restocks** all items; 409 otherwise.
+  - `PATCH /api/v1/orders/{id}/status` (**admin only**) — `processing → shipped → delivered` flow; cancelling from a non-final state restocks; final states (`delivered`/`cancelled`) are immutable (409).
+  - `GET /api/v1/orders/payment-info` — public IBAN-transfer instructions from `Settings` (new `payment_iban` / `payment_receiver` keys with dev defaults).
+- `DELETE /api/v1/cart` — clears the whole cart (204) for the "Sepeti Temizle" action.
+- `CartProductResponse` now includes `stock` and `image_url` (new `Product.primary_image_url` property) so the cart UI can render images and clamp quantity selectors.
+- **`tests/test_orders.py`** — 14 new tests: auth (401), empty cart (400), multi-item totals, insufficient stock (409 with cart/stock preserved), price snapshot, history order + cross-user isolation (404), cancel restock, double-cancel (409), admin transitions, admin cancel restock, non-admin status update (403), public payment-info, cart clear.
+
+### 7.2 Frontend — Server cart, checkout, order history
+
+- **`features/cart/`**: localStorage Zustand store **removed**; new `CartProvider` (server-backed, user-scoped derived state — no sync setState in effects) + `api.ts` (`getCart`/`addCartItem`/`updateCartItem`/`removeCartItem`/`clearCart`) and a new `apiFetchEmpty` helper for 204 endpoints. `layout.tsx` nests `CartProvider` inside `AuthProvider`.
+- **`components/product/AddToCartButton.tsx`** — now posts to the server cart, handles unauthenticated users (redirect to `/login`), busy/success/error states; wired into `products/[slug]` (was unused).
+- **`app/cart/page.tsx`** — rewritten on the server cart: auth gate, stock-clamped quantity selector, error banner, `Sepeti Temizle`, and **"Ödeme Adımına Geç" → `/checkout`** (the button previously did nothing).
+- **`app/checkout/page.tsx` (new)** — auth + empty-cart gates, Teslimat Bilgileri form (prefilled full name from the account), IBAN-transfer payment section, order-summary sidebar; on success refreshes the cart and redirects to `/orders/{id}?success=1`.
+- **`app/orders/page.tsx` (new)** — "Siparişlerim" history: newest-first list with Turkish status badges and totals; auth gate.
+- **`app/orders/[id]/page.tsx` (new)** — order detail: status badge, items with price snapshots, shipping info, **payment block (receiver + IBAN + "Sipariş #N" reference) when `pending_payment`**, cancel button for cancellable states, success banner after checkout (`useSearchParams` wrapped in `Suspense`).
+- **`app/account/page.tsx`** — Siparişlerim / Sepetim shortcut cards. **`robots.ts`** — `/orders/` added to disallow (checkout was already listed).
+
+### 7.3 Validation (this round)
+
+| Check | Result |
+|---|---|
+| `pytest` (backend, 65 tests) | ✅ 65 passed (51 prior + 14 order-flow) |
+| `alembic upgrade head` → `check` → `downgrade -1` → `upgrade` (PostgreSQL 16) | ✅ clean round-trip, zero model↔DB drift |
+| Live API funnel (register → admin product → cart → checkout → stock 10→8 → cart emptied → history → admin `processing` → cancel → stock restored → payment-info → 401/404/400 guards) | ✅ all correct |
+| `npx tsc --noEmit` | ✅ 0 errors |
+| `npx next build` | ✅ 21 routes incl. `/checkout`, `/orders`, `/orders/[id]` |
+| `npx eslint src` | ✅ 0 errors (4 `<img>` warnings, consistent with existing pages) |
+| `next start` :3100 + proxied funnel (login → cart → checkout → stock → history through `/api/*`) + `/checkout`, `/orders` pages | ✅ all correct |
+
