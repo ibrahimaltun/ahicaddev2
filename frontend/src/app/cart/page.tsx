@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 
+import { buttonClasses } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCart } from "@/features/cart/CartProvider";
+import { useI18n } from "@/features/i18n/LocaleProvider";
 
 export default function CartPage() {
+    const { t } = useI18n();
     const {
         user,
         loading: authLoading,
@@ -24,8 +27,8 @@ export default function CartPage() {
     if (authLoading || isLoading) {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-                <p className="text-neutral-600">
-                    Sepetiniz yükleniyor...
+                <p className="text-foreground-muted">
+                    {t("cart.loading")}
                 </p>
             </main>
         );
@@ -35,19 +38,18 @@ export default function CartPage() {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
                 <h1 className="text-3xl font-semibold">
-                    Sepetiniz için giriş yapın
+                    {t("cart.loginTitle")}
                 </h1>
 
-                <p className="mt-3 text-neutral-600">
-                    Sepetinizde ürün görebilmek ve alışverişe
-                    devam edebilmek için giriş yapmanız gerekiyor.
+                <p className="mt-3 text-foreground-muted">
+                    {t("cart.loginDescription")}
                 </p>
 
                 <Link
                     href="/login"
-                    className="mt-6 inline-flex rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                    className="mt-6 inline-flex rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface-2"
                 >
-                    Giriş Yap
+                    {t("common.login")}
                 </Link>
             </main>
         );
@@ -56,24 +58,24 @@ export default function CartPage() {
     if (items.length === 0) {
         return (
             <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-                <p className="text-sm font-medium text-neutral-500">
-                    Sepet
+                <p className="text-sm font-medium text-foreground-subtle">
+                    {t("cart.label")}
                 </p>
 
                 <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                    Sepetim
+                    {t("cart.title")}
                 </h1>
 
-                <div className="mt-12 rounded-2xl border border-neutral-200 p-8 text-center">
-                    <p className="text-neutral-600">
-                        Sepetiniz boş.
+                <div className="mt-12 rounded-2xl border border-border bg-surface p-8 text-center">
+                    <p className="text-foreground-muted">
+                        {t("cart.empty")}
                     </p>
 
                     <Link
                         href="/products"
-                        className="mt-6 inline-flex rounded-xl bg-neutral-950 px-5 py-3 text-sm font-medium text-white hover:bg-neutral-800"
+                        className={buttonClasses("primary", "md", "mt-6")}
                     >
-                        Alışverişe Devam Et
+                        {t("cart.continueShopping")}
                     </Link>
                 </div>
             </main>
@@ -90,12 +92,12 @@ export default function CartPage() {
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
             <div className="flex items-end justify-between">
                 <div>
-                    <p className="text-sm font-medium text-neutral-500">
-                        Sepet
+                    <p className="text-sm font-medium text-foreground-subtle">
+                        {t("cart.label")}
                     </p>
 
                     <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                        Sepetim
+                        {t("cart.title")}
                     </h1>
                 </div>
 
@@ -104,123 +106,117 @@ export default function CartPage() {
                     onClick={() => {
                         clear().catch(() => {});
                     }}
-                    className="text-sm text-red-600 hover:text-red-700"
+                    className="text-sm font-medium text-danger-fg transition-colors hover:text-danger-solid"
                 >
-                    Sepeti Temizle
+                    {t("cart.clearCart")}
                 </button>
             </div>
 
             {error && (
                 <p
                     role="alert"
-                    className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                    className="mt-6 rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-fg"
                 >
                     {error}
                 </p>
             )}
 
-            <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_360px]">
+            <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_320px]">
                 <div className="space-y-4">
-                    {items.map((item) => {
-                        const maxQuantity = Math.max(
-                            1,
-                            Math.min(5, item.product.stock),
-                        );
-
-                        return (
-                            <div
-                                key={item.id}
-                                className="flex gap-5 rounded-2xl border border-neutral-200 p-5"
-                            >
-                                <div className="h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
-                                    {item.product.image_url ? (
-                                        <img
-                                            src={item.product.image_url}
-                                            alt={item.product.name}
-                                            className="h-full w-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex h-full items-center justify-center text-xs text-neutral-400">
-                                            Görsel yok
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-1 flex-col justify-between">
-                                    <div>
-                                        <Link
-                                            href={`/products/${item.product.slug}`}
-                                            className="font-medium hover:text-neutral-600"
-                                        >
-                                            {item.product.name}
-                                        </Link>
-
-                                        <p className="mt-1 text-sm text-neutral-500">
-                                            {item.product.price} ₺
-                                        </p>
-                                    </div>
-
-                                    <div className="mt-3 flex items-center gap-4">
-                                        <select
-                                            value={item.quantity}
-                                            onChange={(event) => {
-                                                updateItem(
-                                                    item.id,
-                                                    Number(
-                                                        event.target.value,
-                                                    ),
-                                                ).catch(() => {});
-                                            }}
-                                            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-                                            aria-label={`${item.product.name} ürün adedi`}
-                                        >
-                                            {Array.from(
-                                                { length: maxQuantity },
-                                                (_, index) => index + 1,
-                                            ).map((quantity) => (
-                                                <option
-                                                    key={quantity}
-                                                    value={quantity}
-                                                >
-                                                    {quantity}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                removeItem(item.id).catch(
-                                                    () => {},
-                                                );
-                                            }}
-                                            className="text-sm text-red-600 hover:text-red-700"
-                                        >
-                                            Kaldır
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <p className="font-semibold">
-                                    {(
-                                        Number(item.product.price) *
-                                        item.quantity
-                                    ).toFixed(2)}{" "}
-                                    ₺
-                                </p>
+                    {items.map((item) => (
+                        <div
+                            key={item.id}
+                            className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-4"
+                        >
+                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2">
+                                {item.product.image_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                        src={item.product.image_url}
+                                        alt={item.product.name}
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : null}
                             </div>
-                        );
-                    })}
+
+                            <div className="min-w-0 flex-1">
+                                <Link
+                                    href={`/products/${item.product.slug}`}
+                                    className="font-medium text-foreground transition-colors hover:text-primary"
+                                >
+                                    {item.product.name}
+                                </Link>
+
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    {item.product.price} ₺
+                                </p>
+
+                                <div className="mt-2 flex items-center gap-3">
+                                    <label
+                                        className="sr-only"
+                                        htmlFor={`quantity-${item.id}`}
+                                    >
+                                        {t("cart.quantity")}
+                                    </label>
+
+                                    <select
+                                        id={`quantity-${item.id}`}
+                                        value={item.quantity}
+                                        onChange={(event) => {
+                                            updateItem(
+                                                item.id,
+                                                Number(event.target.value),
+                                            ).catch(() => {});
+                                        }}
+                                        className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm"
+                                        aria-label={`${item.product.name} ürün adedi`}
+                                    >
+                                        {Array.from(
+                                            { length: Math.max(item.product.stock, item.quantity) },
+                                            (_, index) => index + 1,
+                                        ).map((quantity) => (
+                                            <option
+                                                key={quantity}
+                                                value={quantity}
+                                            >
+                                                {quantity}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            removeItem(item.id).catch(
+                                                () => {},
+                                            );
+                                        }}
+                                        className="text-sm font-medium text-danger-fg transition-colors hover:text-danger-solid"
+                                    >
+                                        {t("cart.remove")}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p className="font-semibold">
+                                {(
+                                    Number(item.product.price) *
+                                    item.quantity
+                                ).toFixed(2)}{" "}
+                                ₺
+                            </p>
+                        </div>
+                    ))}
                 </div>
 
-                <aside className="h-fit rounded-2xl border border-neutral-200 p-6">
+                <aside className="h-fit rounded-2xl border border-border bg-surface p-6">
                     <h2 className="text-lg font-semibold">
-                        Sipariş Özeti
+                        {t("cart.summary")}
                     </h2>
 
                     <div className="mt-6 flex justify-between text-sm">
-                        <span className="text-neutral-500">
-                            Ara Toplam
+                        <span className="text-foreground-muted">
+                            {t("cart.subtotal")}
                         </span>
 
                         <span>
@@ -228,8 +224,8 @@ export default function CartPage() {
                         </span>
                     </div>
 
-                    <div className="mt-4 flex justify-between border-t border-neutral-200 pt-4 text-lg font-semibold">
-                        <span>Toplam</span>
+                    <div className="mt-4 flex justify-between border-t border-border pt-4 text-lg font-semibold">
+                        <span>{t("cart.total")}</span>
 
                         <span>
                             {total.toFixed(2)} ₺
@@ -238,9 +234,9 @@ export default function CartPage() {
 
                     <Link
                         href="/checkout"
-                        className="mt-6 block w-full rounded-xl bg-neutral-950 px-5 py-3 text-center text-sm font-medium text-white hover:bg-neutral-800"
+                        className={buttonClasses("primary", "lg", "mt-6 w-full")}
                     >
-                        Ödeme Adımına Geç
+                        {t("cart.checkout")}
                     </Link>
                 </aside>
             </div>

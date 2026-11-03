@@ -4,15 +4,18 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { buttonClasses } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Notice } from "@/components/ui/notice";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useI18n } from "@/features/i18n/LocaleProvider";
 import {
     cancelOrder,
     getPaymentInfo,
     getOrder,
 } from "@/features/orders/api";
 import {
-    ORDER_STATUS_CLASSES,
-    ORDER_STATUS_LABELS,
+    ORDER_STATUS_TONES,
     type Order,
     type PaymentInfo,
 } from "@/features/orders/types";
@@ -25,6 +28,7 @@ const CANCELLABLE_STATUSES = new Set([
 function OrderDetailContent() {
     const params = useParams<{ id: string }>();
     const searchParams = useSearchParams();
+    const { t, locale } = useI18n();
 
     const orderId = Number(params.id);
     const isJustCreated =
@@ -35,19 +39,11 @@ function OrderDetailContent() {
         isAuthenticated,
     } = useAuth();
 
-    const [order, setOrder] = useState<Order | null>(
-        null,
-    );
-    const [paymentInfo, setPaymentInfo] =
-        useState<PaymentInfo | null>(null);
-    const [error, setError] = useState<string | null>(
-        null,
-    );
-    const [isCancelling, setIsCancelling] =
-        useState(false);
-    const [cancelError, setCancelError] = useState<
-        string | null
-    >(null);
+    const [order, setOrder] = useState<Order | null>(null);
+    const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [cancelError, setCancelError] = useState<string | null>(null);
 
     const isValidOrderId = Number.isFinite(orderId);
 
@@ -71,9 +67,7 @@ function OrderDetailContent() {
                 }
             } catch {
                 if (!cancelled) {
-                    setError(
-                        "Sipariş bulunamadı veya görüntüleme yetkiniz yok.",
-                    );
+                    setError(t("orders.notFound"));
                 }
             }
         })();
@@ -81,7 +75,7 @@ function OrderDetailContent() {
         return () => {
             cancelled = true;
         };
-    }, [authLoading, isAuthenticated, orderId, isValidOrderId]);
+    }, [authLoading, isAuthenticated, orderId, isValidOrderId, t]);
 
     async function handleCancel() {
         if (!order) {
@@ -97,7 +91,7 @@ function OrderDetailContent() {
             setCancelError(
                 cancelError_ instanceof Error
                     ? cancelError_.message
-                    : "Sipariş iptal edilemedi.",
+                    : t("orders.cancelError"),
             );
         } finally {
             setIsCancelling(false);
@@ -107,8 +101,8 @@ function OrderDetailContent() {
     if (authLoading) {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-                <p className="text-neutral-600">
-                    Siparişiniz yükleniyor...
+                <p className="text-foreground-muted">
+                    {t("orders.detailLoading")}
                 </p>
             </main>
         );
@@ -118,213 +112,198 @@ function OrderDetailContent() {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
                 <h1 className="text-3xl font-semibold">
-                    Siparişiniz için giriş yapın
+                    {t("orders.detailLoginTitle")}
                 </h1>
 
-                <p className="mt-3 text-neutral-600">
-                    Sipariş detayınızı görüntülemek için giriş
-                    yapmanız gerekiyor.
+                <p className="mt-3 text-foreground-muted">
+                    {t("orders.detailLoginDescription")}
                 </p>
 
                 <Link
                     href="/login"
-                    className="mt-6 inline-flex rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                    className="mt-6 inline-flex rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface-2"
                 >
-                    Giriş Yap
+                    {t("common.login")}
                 </Link>
             </main>
         );
     }
 
-    if (isValidOrderId && !error && order === null) {
+    if (error) {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-                <p className="text-neutral-600">
-                    Siparişiniz yükleniyor...
-                </p>
-            </main>
-        );
-    }
-
-    if (!isValidOrderId || error || !order) {
-        return (
-            <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-                <h1 className="text-3xl font-semibold">
-                    Sipariş bulunamadı
-                </h1>
-
-                <p className="mt-3 text-neutral-600">
-                    {!isValidOrderId
-                        ? "Geçersiz sipariş numarası."
-                        : error ||
-                          "Bu siparişi görüntüleme yetkiniz yok."}
-                </p>
+                <Notice tone="error" role="alert" className="max-w-xl">
+                    {error}
+                </Notice>
 
                 <Link
                     href="/orders"
-                    className="mt-6 inline-flex rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                    className={buttonClasses("secondary", "md", "mt-6")}
                 >
-                    Siparişlerim
+                    {t("orders.backToOrders")}
                 </Link>
+            </main>
+        );
+    }
+
+    if (!order) {
+        return (
+            <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+                <p className="text-foreground-muted">
+                    {t("orders.detailLoading")}
+                </p>
             </main>
         );
     }
 
     const total = order.items.reduce(
-        (sum, item) =>
-            sum + Number(item.unit_price) * item.quantity,
+        (sum, item) => sum + Number(item.unit_price) * item.quantity,
         0,
     );
 
     return (
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-                <div>
-                    <p className="text-sm font-medium text-neutral-500">
-                        Siparişlerim
-                    </p>
+            <p className="text-sm font-medium text-foreground-subtle">
+                {t("orders.label")}
+            </p>
 
-                    <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                        Sipariş #{order.id}
-                    </h1>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+                <h1 className="text-4xl font-semibold tracking-tight">
+                    {t("orders.orderNumber", { id: order.id })}
+                </h1>
 
-                    <p className="mt-3 text-sm text-neutral-500">
-                        {new Date(order.created_at).toLocaleDateString(
-                            "tr-TR",
-                            {
-                                day: "numeric",
-                                month: "long",
-                                year: "numeric",
-                            },
-                        )}
-                    </p>
-                </div>
-
-                <span
-                    className={`inline-flex rounded-full px-4 py-1.5 text-sm font-semibold ${ORDER_STATUS_CLASSES[order.status]}`}
-                >
-                    {ORDER_STATUS_LABELS[order.status]}
-                </span>
+                <Badge tone={ORDER_STATUS_TONES[order.status]}>
+                    {t(`orders.status.${order.status}`)}
+                </Badge>
             </div>
 
+            <p className="mt-2 text-sm text-foreground-muted">
+                {new Date(order.created_at).toLocaleDateString(
+                    locale === "en" ? "en-US" : "tr-TR",
+                    {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                    },
+                )}
+            </p>
+
             {isJustCreated && order.status === "pending_payment" && (
-                <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-6">
-                    <p className="font-semibold text-green-800">
-                        Siparişiniz alındı. Teşekkür ederiz!
+                <Notice tone="success" className="mt-8">
+                    <p className="font-semibold">
+                        {t("orders.justCreatedTitle")}
                     </p>
 
-                    <p className="mt-2 text-sm text-green-700">
-                        Aşağıdaki IBAN numarasına ödemenizi
-                        yapabilirsiniz. Ödemeniz onaylandığında
-                        siparişiniz hazırlanacaktır.
+                    <p className="mt-1">
+                        {t("orders.justCreatedDescription")}
                     </p>
-                </div>
+                </Notice>
             )}
 
-            {order.status === "pending_payment" && (
-                <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6">
-                    <h2 className="text-lg font-semibold text-amber-900">
-                        Ödeme Bilgileri (Havale / EFT)
-                    </h2>
-
-                    {paymentInfo ? (
-                        <dl className="mt-4 space-y-3 text-sm">
-                            <div>
-                                <dt className="text-amber-800">
-                                    Alıcı
-                                </dt>
-
-                                <dd className="mt-1 font-medium text-amber-950">
-                                    {paymentInfo.receiver}
-                                </dd>
-                            </div>
-
-                            <div>
-                                <dt className="text-amber-800">
-                                    IBAN
-                                </dt>
-
-                                <dd className="mt-1 font-medium tracking-wide text-amber-950">
-                                    {paymentInfo.iban}
-                                </dd>
-                            </div>
-
-                            <div>
-                                <dt className="text-amber-800">
-                                    Ödeme Açıklaması
-                                </dt>
-
-                                <dd className="mt-1 font-medium text-amber-950">
-                                    Sipariş #{order.id}
-                                </dd>
-                            </div>
-
-                            <p className="text-amber-800">
-                                {paymentInfo.instructions}
-                            </p>
-                        </dl>
-                    ) : (
-                        <p className="mt-3 text-sm text-amber-800">
-                            Ödeme bilgileri yükleniyor...
-                        </p>
-                    )}
-                </section>
+            {order.status === "cancelled" && (
+                <Notice tone="info" className="mt-8">
+                    {t("orders.cancelledMessage")}
+                </Notice>
             )}
 
-            <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_360px]">
-                <section className="rounded-2xl border border-neutral-200 p-6">
-                    <h2 className="text-lg font-semibold">
-                        Ürünler
-                    </h2>
+            <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_360px]">
+                <div className="space-y-8">
+                    <section className="rounded-2xl border border-border bg-surface p-6">
+                        <h2 className="text-lg font-semibold">
+                            {t("orders.items")}
+                        </h2>
 
-                    <ul className="mt-6 divide-y divide-neutral-200">
-                        {order.items.map((item) => (
-                            <li
-                                key={item.id}
-                                className="flex justify-between gap-4 py-4"
-                            >
-                                <div>
-                                    <span className="font-medium">
-                                        {item.product_name}
-                                    </span>
+                        <ul className="mt-6 divide-y divide-border">
+                            {order.items.map((item) => (
+                                <li
+                                    key={item.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 py-4"
+                                >
+                                    <div>
+                                        <p className="font-medium">
+                                            {item.product_name}
+                                        </p>
 
-                                    <p className="mt-1 text-sm text-neutral-500">
-                                        {Number(item.unit_price).toFixed(2)} ₺
-                                        {" × "}
-                                        {item.quantity}
+                                        <p className="mt-1 text-sm text-foreground-muted">
+                                            {Number(item.unit_price).toFixed(2)} ₺ × {item.quantity}
+                                        </p>
+                                    </div>
+
+                                    <p className="font-semibold">
+                                        {(
+                                            Number(item.unit_price) *
+                                            item.quantity
+                                        ).toFixed(2)}{" "}
+                                        ₺
                                     </p>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="mt-2 flex justify-between border-t border-border pt-4 text-lg font-semibold">
+                            <span>{t("orders.total")}</span>
+
+                            <span>
+                                {total.toFixed(2)} ₺
+                            </span>
+                        </div>
+                    </section>
+
+                    {order.status === "pending_payment" && paymentInfo && (
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <h2 className="text-lg font-semibold">
+                                {t("orders.paymentTitle")}
+                            </h2>
+
+                            <dl className="mt-6 space-y-4 text-sm">
+                                <div>
+                                    <dt className="text-foreground-muted">
+                                        {t("orders.paymentIban")}
+                                    </dt>
+
+                                    <dd className="mt-1 font-mono text-base font-semibold">
+                                        {paymentInfo.iban}
+                                    </dd>
                                 </div>
 
-                                <p className="font-semibold">
-                                    {(
-                                        Number(item.unit_price) *
-                                        item.quantity
-                                    ).toFixed(2)}{" "}
-                                    ₺
-                                </p>
-                            </li>
-                        ))}
-                    </ul>
+                                <div>
+                                    <dt className="text-foreground-muted">
+                                        {t("orders.paymentReceiver")}
+                                    </dt>
 
-                    <div className="mt-4 flex justify-between border-t border-neutral-200 pt-4 text-lg font-semibold">
-                        <span>Toplam</span>
+                                    <dd className="mt-1 font-medium">
+                                        {paymentInfo.receiver}
+                                    </dd>
+                                </div>
 
-                        <span>
-                            {total.toFixed(2)} ₺
-                        </span>
-                    </div>
-                </section>
+                                <div>
+                                    <dt className="text-foreground-muted">
+                                        {t("orders.paymentInstructions")}
+                                    </dt>
 
-                <aside className="space-y-6">
-                    <section className="rounded-2xl border border-neutral-200 p-6">
+                                    <dd className="mt-1 leading-6">
+                                        {paymentInfo.instructions}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            <p className="mt-6 rounded-xl bg-surface-2 px-4 py-3 text-xs text-foreground-muted">
+                                {t("orders.paymentNote")}
+                            </p>
+                        </section>
+                    )}
+                </div>
+
+                <aside className="space-y-8">
+                    <section className="rounded-2xl border border-border bg-surface p-6">
                         <h2 className="text-lg font-semibold">
-                            Teslimat Bilgileri
+                            {t("orders.shippingTitle")}
                         </h2>
 
                         <dl className="mt-6 space-y-4 text-sm">
                             <div>
-                                <dt className="text-neutral-500">
-                                    Ad Soyad
+                                <dt className="text-foreground-muted">
+                                    {t("orders.shippingFullName")}
                                 </dt>
 
                                 <dd className="mt-1 font-medium">
@@ -333,8 +312,8 @@ function OrderDetailContent() {
                             </div>
 
                             <div>
-                                <dt className="text-neutral-500">
-                                    Telefon
+                                <dt className="text-foreground-muted">
+                                    {t("orders.shippingPhone")}
                                 </dt>
 
                                 <dd className="mt-1 font-medium">
@@ -343,8 +322,8 @@ function OrderDetailContent() {
                             </div>
 
                             <div>
-                                <dt className="text-neutral-500">
-                                    Adres
+                                <dt className="text-foreground-muted">
+                                    {t("orders.shippingAddress")}
                                 </dt>
 
                                 <dd className="mt-1 font-medium">
@@ -361,32 +340,39 @@ function OrderDetailContent() {
                     </section>
 
                     {CANCELLABLE_STATUSES.has(order.status) && (
-                        <section className="rounded-2xl border border-neutral-200 p-6">
+                        <section className="rounded-2xl border border-border bg-surface p-6">
                             <h2 className="text-lg font-semibold">
-                                Sipariş İşlemleri
+                                {t("orders.actionsTitle")}
                             </h2>
 
                             <button
                                 type="button"
                                 onClick={handleCancel}
                                 disabled={isCancelling}
-                                className="mt-6 w-full rounded-xl border border-red-200 px-5 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+                                className="mt-6 w-full rounded-xl border border-danger-border bg-danger-bg/40 px-5 py-3 text-sm font-semibold text-danger-fg transition hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isCancelling
-                                    ? "İptal ediliyor..."
-                                    : "Siparişi İptal Et"}
+                                    ? t("orders.cancelling")
+                                    : t("orders.cancelOrder")}
                             </button>
 
                             {cancelError && (
                                 <p
                                     role="alert"
-                                    className="mt-3 text-sm text-red-600"
+                                    className="mt-3 text-sm text-danger-fg"
                                 >
                                     {cancelError}
                                 </p>
                             )}
                         </section>
                     )}
+
+                    <Link
+                        href="/orders"
+                        className={buttonClasses("secondary", "md", "w-full")}
+                    >
+                        {t("orders.backToOrders")}
+                    </Link>
                 </aside>
             </div>
         </main>
@@ -398,9 +384,7 @@ export default function OrderDetailPage() {
         <Suspense
             fallback={
                 <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-                    <p className="text-neutral-600">
-                        Siparişiniz yükleniyor...
-                    </p>
+                    <p className="text-foreground-muted">...</p>
                 </main>
             }
         >

@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { buttonClasses } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/form";
+import { Notice } from "@/components/ui/notice";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCart } from "@/features/cart/CartProvider";
+import { useI18n } from "@/features/i18n/LocaleProvider";
 import { createOrder } from "@/features/orders/api";
 
 const emptyForm = {
@@ -19,6 +23,7 @@ const emptyForm = {
 
 export default function CheckoutPage() {
     const router = useRouter();
+    const { t } = useI18n();
 
     const {
         user,
@@ -59,7 +64,7 @@ export default function CheckoutPage() {
             form.shipping_full_name.trim() || accountFullName;
 
         if (shippingFullName.length < 3) {
-            setError("Lütfen ad soyad girin.");
+            setError(t("checkout.fullNameRequired"));
 
             return;
         }
@@ -84,7 +89,7 @@ export default function CheckoutPage() {
             setError(
                 submitError instanceof Error
                     ? submitError.message
-                    : "Sipariş oluşturulamadı.",
+                    : t("checkout.createError"),
             );
             setIsSubmitting(false);
         }
@@ -93,8 +98,8 @@ export default function CheckoutPage() {
     if (authLoading || cartLoading) {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-                <p className="text-neutral-600">
-                    Ödeme adımı yükleniyor...
+                <p className="text-foreground-muted">
+                    {t("checkout.loading")}
                 </p>
             </main>
         );
@@ -104,19 +109,18 @@ export default function CheckoutPage() {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
                 <h1 className="text-3xl font-semibold">
-                    Ödeme adımı için giriş yapın
+                    {t("checkout.loginTitle")}
                 </h1>
 
-                <p className="mt-3 text-neutral-600">
-                    Siparişinizi tamamlayabilmek için giriş
-                    yapmanız gerekiyor.
+                <p className="mt-3 text-foreground-muted">
+                    {t("checkout.loginDescription")}
                 </p>
 
                 <Link
                     href="/login"
-                    className="mt-6 inline-flex rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                    className="mt-6 inline-flex rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface-2"
                 >
-                    Giriş Yap
+                    {t("common.login")}
                 </Link>
             </main>
         );
@@ -124,28 +128,21 @@ export default function CheckoutPage() {
 
     if (items.length === 0) {
         return (
-            <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-                <p className="text-sm font-medium text-neutral-500">
-                    Ödeme
-                </p>
-
-                <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                    Ödeme Adımı
+            <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+                <h1 className="text-3xl font-semibold">
+                    {t("checkout.title")}
                 </h1>
 
-                <div className="mt-12 rounded-2xl border border-neutral-200 p-8 text-center">
-                    <p className="text-neutral-600">
-                        Sepetiniz boş. Ödeme adımına geçebilmek
-                        için sepetinize ürün ekleyin.
-                    </p>
+                <p className="mt-3 text-foreground-muted">
+                    {t("checkout.emptyCart")}
+                </p>
 
-                    <Link
-                        href="/products"
-                        className="mt-6 inline-flex rounded-xl bg-neutral-950 px-5 py-3 text-sm font-medium text-white hover:bg-neutral-800"
-                    >
-                        Alışverişe Devam Et
-                    </Link>
-                </div>
+                <Link
+                    href="/products"
+                    className={buttonClasses("primary", "md", "mt-6")}
+                >
+                    {t("cart.continueShopping")}
+                </Link>
             </main>
         );
     }
@@ -158,189 +155,161 @@ export default function CheckoutPage() {
 
     return (
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-            <p className="text-sm font-medium text-neutral-500">
-                Ödeme
+            <p className="text-sm font-medium text-foreground-subtle">
+                {t("checkout.label")}
             </p>
 
             <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                Ödeme Adımı
+                {t("checkout.title")}
             </h1>
 
-            <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_360px]">
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-10"
-                >
-                    <section className="rounded-2xl border border-neutral-200 p-6">
+            <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_360px]">
+                <form onSubmit={handleSubmit} className="space-y-10">
+                    <section className="rounded-2xl border border-border bg-surface p-6">
                         <h2 className="text-lg font-semibold">
-                            Teslimat Bilgileri
+                            {t("checkout.shippingTitle")}
                         </h2>
 
-                        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                            <label className="sm:col-span-2">
-                                <span className="text-sm text-neutral-600">
-                                    Ad Soyad
-                                </span>
+                        <p className="mt-1 text-sm text-foreground-muted">
+                            {t("checkout.shippingDescription")}
+                        </p>
 
-                                <input
-                                    type="text"
-                                    maxLength={200}
+                        <div className="mt-6 space-y-5">
+                            <Field
+                                label={t("checkout.fullName")}
+                                htmlFor="shipping_full_name"
+                            >
+                                <Input
+                                    id="shipping_full_name"
+                                    value={form.shipping_full_name}
+                                    onChange={updateField("shipping_full_name")}
                                     placeholder={
                                         accountFullName ||
-                                        "Ad Soyad"
+                                        t("checkout.fullNamePlaceholder")
                                     }
-                                    value={form.shipping_full_name}
-                                    onChange={updateField(
-                                        "shipping_full_name",
-                                    )}
-                                    className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm focus:border-neutral-950 focus:outline-none"
-                                />
-                            </label>
-
-                            <label>
-                                <span className="text-sm text-neutral-600">
-                                    Telefon
-                                </span>
-
-                                <input
-                                    type="tel"
                                     required
-                                    minLength={7}
-                                    maxLength={30}
-                                    value={form.shipping_phone}
-                                    onChange={updateField(
-                                        "shipping_phone",
-                                    )}
-                                    className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm focus:border-neutral-950 focus:outline-none"
                                 />
-                            </label>
+                            </Field>
 
-                            <label>
-                                <span className="text-sm text-neutral-600">
-                                    İl
-                                </span>
+                            <div className="grid gap-5 sm:grid-cols-2">
+                                <Field
+                                    label={t("checkout.phone")}
+                                    htmlFor="shipping_phone"
+                                >
+                                    <Input
+                                        id="shipping_phone"
+                                        type="tel"
+                                        value={form.shipping_phone}
+                                        onChange={updateField("shipping_phone")}
+                                        placeholder={t("checkout.phonePlaceholder")}
+                                        required
+                                    />
+                                </Field>
 
-                                <input
-                                    type="text"
-                                    required
-                                    minLength={2}
-                                    maxLength={100}
-                                    value={form.shipping_city}
-                                    onChange={updateField(
-                                        "shipping_city",
-                                    )}
-                                    className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm focus:border-neutral-950 focus:outline-none"
-                                />
-                            </label>
+                                <Field
+                                    label={t("checkout.city")}
+                                    htmlFor="shipping_city"
+                                >
+                                    <Input
+                                        id="shipping_city"
+                                        value={form.shipping_city}
+                                        onChange={updateField("shipping_city")}
+                                        placeholder={t("checkout.cityPlaceholder")}
+                                        required
+                                    />
+                                </Field>
+                            </div>
 
-                            <label>
-                                <span className="text-sm text-neutral-600">
-                                    İlçe
-                                </span>
+                            <div className="grid gap-5 sm:grid-cols-2">
+                                <Field
+                                    label={t("checkout.district")}
+                                    htmlFor="shipping_district"
+                                >
+                                    <Input
+                                        id="shipping_district"
+                                        value={form.shipping_district}
+                                        onChange={updateField("shipping_district")}
+                                        placeholder={t("checkout.districtPlaceholder")}
+                                        required
+                                    />
+                                </Field>
 
-                                <input
-                                    type="text"
-                                    required
-                                    minLength={2}
-                                    maxLength={100}
-                                    value={form.shipping_district}
-                                    onChange={updateField(
-                                        "shipping_district",
-                                    )}
-                                    className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm focus:border-neutral-950 focus:outline-none"
-                                />
-                            </label>
+                                <Field
+                                    label={t("checkout.postalCode")}
+                                    htmlFor="shipping_postal_code"
+                                >
+                                    <Input
+                                        id="shipping_postal_code"
+                                        value={form.shipping_postal_code}
+                                        onChange={updateField("shipping_postal_code")}
+                                        placeholder={t("checkout.postalCodePlaceholder")}
+                                    />
+                                </Field>
+                            </div>
 
-                            <label>
-                                <span className="text-sm text-neutral-600">
-                                    Posta Kodu (isteğe bağlı)
-                                </span>
-
-                                <input
-                                    type="text"
-                                    maxLength={10}
-                                    value={form.shipping_postal_code}
-                                    onChange={updateField(
-                                        "shipping_postal_code",
-                                    )}
-                                    className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm focus:border-neutral-950 focus:outline-none"
-                                />
-                            </label>
-
-                            <label className="sm:col-span-2">
-                                <span className="text-sm text-neutral-600">
-                                    Açık Adres
-                                </span>
-
-                                <textarea
-                                    required
-                                    minLength={10}
-                                    maxLength={1000}
-                                    rows={4}
+                            <Field
+                                label={t("checkout.address")}
+                                htmlFor="shipping_address"
+                            >
+                                <Textarea
+                                    id="shipping_address"
                                     value={form.shipping_address}
-                                    onChange={updateField(
-                                        "shipping_address",
-                                    )}
-                                    className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm focus:border-neutral-950 focus:outline-none"
+                                    onChange={updateField("shipping_address")}
+                                    placeholder={t("checkout.addressPlaceholder")}
+                                    required
                                 />
-                            </label>
+                            </Field>
                         </div>
                     </section>
 
-                    <section className="rounded-2xl border border-neutral-200 p-6">
+                    <section className="rounded-2xl border border-border bg-surface p-6">
                         <h2 className="text-lg font-semibold">
-                            Ödeme Yöntemi
+                            {t("checkout.paymentTitle")}
                         </h2>
 
-                        <div className="mt-6 flex items-start gap-3 rounded-xl border border-neutral-200 p-4">
+                        <div className="mt-6 flex items-start gap-3 rounded-xl border border-border bg-surface-2 p-4">
                             <input
-                                type="radio"
                                 id="iban_transfer"
                                 name="payment_method"
+                                type="radio"
                                 value="iban_transfer"
-                                checked
+                                defaultChecked
                                 readOnly
                                 className="mt-1"
                             />
 
                             <label htmlFor="iban_transfer">
                                 <span className="block font-medium">
-                                    Havale / EFT (IBAN)
+                                    {t("checkout.paymentIbanTitle")}
                                 </span>
 
-                                <span className="mt-1 block text-sm text-neutral-500">
-                                    Ödeme talimatları ve IBAN
-                                    bilgisi siparişinizi
-                                    oluşturduktan sonra
-                                    gösterilecektir.
+                                <span className="mt-1 block text-sm text-foreground-muted">
+                                    {t("checkout.paymentIbanDescription")}
                                 </span>
                             </label>
                         </div>
                     </section>
 
                     {error && (
-                        <p
-                            role="alert"
-                            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-                        >
+                        <Notice tone="error" role="alert">
                             {error}
-                        </p>
+                        </Notice>
                     )}
 
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full rounded-xl bg-neutral-950 px-6 py-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300"
+                        className={buttonClasses("primary", "lg", "w-full")}
                     >
                         {isSubmitting
-                            ? "Sipariş oluşturuluyor..."
-                            : "Siparişi Onayla"}
+                            ? t("checkout.creating")
+                            : t("checkout.confirmOrder")}
                     </button>
                 </form>
 
-                <aside className="h-fit rounded-2xl border border-neutral-200 p-6">
+                <aside className="h-fit rounded-2xl border border-border bg-surface p-6">
                     <h2 className="text-lg font-semibold">
-                        Sipariş Özeti
+                        {t("checkout.summary")}
                     </h2>
 
                     <ul className="mt-6 space-y-4">
@@ -349,7 +318,7 @@ export default function CheckoutPage() {
                                 key={item.id}
                                 className="flex justify-between gap-4 text-sm"
                             >
-                                <span className="text-neutral-600">
+                                <span className="text-foreground-muted">
                                     {item.product.name}
                                     {" × "}
                                     {item.quantity}
@@ -366,8 +335,8 @@ export default function CheckoutPage() {
                         ))}
                     </ul>
 
-                    <div className="mt-6 flex justify-between border-t border-neutral-200 pt-4 text-lg font-semibold">
-                        <span>Toplam</span>
+                    <div className="mt-6 flex justify-between border-t border-border pt-4 text-lg font-semibold">
+                        <span>{t("checkout.total")}</span>
 
                         <span>
                             {total.toFixed(2)} ₺
@@ -376,9 +345,9 @@ export default function CheckoutPage() {
 
                     <Link
                         href="/cart"
-                        className="mt-6 block text-center text-sm text-neutral-600 hover:text-neutral-950"
+                        className="mt-6 block text-center text-sm text-foreground-muted transition-colors hover:text-foreground"
                     >
-                        Sepete dön
+                        {t("checkout.backToCart")}
                     </Link>
                 </aside>
             </div>

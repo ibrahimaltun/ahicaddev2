@@ -4,10 +4,12 @@ const API_BASE_URL =
     process.env.API_INTERNAL_URL ||
     "http://localhost:8000/api/v1";
 
-export async function getCategories(): Promise<Category[]> {
+export async function getCategories(
+    revalidate: number = 60,
+): Promise<Category[]> {
     const response = await fetch(`${API_BASE_URL}/categories`, {
         next: {
-            revalidate: 60,
+            revalidate,
         },
     });
 

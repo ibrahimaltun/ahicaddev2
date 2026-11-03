@@ -4,12 +4,17 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/form";
+import { Notice } from "@/components/ui/notice";
 import { login } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useI18n } from "@/features/i18n/LocaleProvider";
 
 export default function LoginPage() {
     const router = useRouter();
     const { refreshUser } = useAuth();
+    const { t } = useI18n();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -33,16 +38,14 @@ export default function LoginPage() {
 
             await refreshUser();
 
-            setSuccess(
-                "Giriş başarılı. Hesabınıza yönlendiriliyorsunuz...",
-            );
+            setSuccess(t("auth.loginSuccess"));
 
             router.push("/account");
-        } catch (error) {
+        } catch (submitError) {
             setError(
-                error instanceof Error
-                    ? error.message
-                    : "Giriş yapılamadı.",
+                submitError instanceof Error
+                    ? submitError.message
+                    : t("auth.loginError"),
             );
         } finally {
             setLoading(false);
@@ -50,16 +53,16 @@ export default function LoginPage() {
     }
 
     return (
-        <main className="min-h-screen bg-white">
+        <main className="min-h-screen bg-background">
             <section className="mx-auto flex min-h-[calc(100vh-160px)] max-w-md items-center px-6 py-16">
-                <div className="w-full">
+                <div className="w-full rounded-2xl border border-border bg-surface p-8 shadow-sm">
                     <div className="mb-8">
                         <h1 className="text-3xl font-semibold tracking-tight">
-                            Giriş Yap
+                            {t("auth.loginTitle")}
                         </h1>
 
-                        <p className="mt-2 text-neutral-600">
-                            Ahicadde hesabınıza giriş yapın.
+                        <p className="mt-2 text-foreground-muted">
+                            {t("auth.loginDescription")}
                         </p>
                     </div>
 
@@ -67,15 +70,8 @@ export default function LoginPage() {
                         onSubmit={handleSubmit}
                         className="space-y-5"
                     >
-                        <div>
-                            <label
-                                htmlFor="email"
-                                className="mb-2 block text-sm font-medium"
-                            >
-                                E-posta
-                            </label>
-
-                            <input
+                        <Field label={t("auth.email")} htmlFor="email">
+                            <Input
                                 id="email"
                                 type="email"
                                 autoComplete="email"
@@ -84,19 +80,11 @@ export default function LoginPage() {
                                 onChange={(event) =>
                                     setEmail(event.target.value)
                                 }
-                                className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none transition focus:border-neutral-900"
                             />
-                        </div>
+                        </Field>
 
-                        <div>
-                            <label
-                                htmlFor="password"
-                                className="mb-2 block text-sm font-medium"
-                            >
-                                Şifre
-                            </label>
-
-                            <input
+                        <Field label={t("auth.password")} htmlFor="password">
+                            <Input
                                 id="password"
                                 type="password"
                                 autoComplete="current-password"
@@ -105,41 +93,37 @@ export default function LoginPage() {
                                 onChange={(event) =>
                                     setPassword(event.target.value)
                                 }
-                                className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none transition focus:border-neutral-900"
                             />
-                        </div>
+                        </Field>
 
                         {success && (
-                            <div
-                                role="status"
-                                className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
-                            >
+                            <Notice tone="success" role="status">
                                 {success}
-                            </div>
+                            </Notice>
                         )}
 
                         {error && (
-                            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                            <Notice tone="error" role="alert">
                                 {error}
-                            </div>
+                            </Notice>
                         )}
 
-                        <button
+                        <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full rounded-xl bg-neutral-950 px-4 py-3 font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-full py-3"
                         >
-                            {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
-                        </button>
+                            {loading ? t("auth.loggingIn") : t("auth.loginButton")}
+                        </Button>
                     </form>
 
-                    <p className="mt-6 text-center text-sm text-neutral-600">
-                        Hesabınız yok mu?{" "}
+                    <p className="mt-6 text-center text-sm text-foreground-muted">
+                        {t("auth.noAccount")}{" "}
                         <a
                             href="/register"
-                            className="font-medium text-neutral-950 underline"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
                         >
-                            Kayıt olun
+                            {t("auth.registerLink")}
                         </a>
                     </p>
                 </div>

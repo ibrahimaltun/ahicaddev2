@@ -1,45 +1,34 @@
 import type { Metadata } from "next";
 
+import { getServerI18n } from "@/lib/i18n/server";
+
 export const metadata: Metadata = {
-    title: "Satıcılar İçin Ahicadde",
-    description:
-        "Ahicadde'de ürünlerini satmak isteyen üretici, esnaf ve işletmeler için şeffaf ve dayanışmacı e-ticaret yaklaşımını keşfedin.",
-    alternates: {
-        canonical: "https://ahicadde.com/saticilar",
-    },
+  title: "Satıcılarımız | Ahicadde",
+  alternates: {
+    canonical: "https://ahicadde.com/saticilar",
+  },
 };
 
-export default function SaticilarPage() {
-    return (
-        <main>
-            <section className="mx-auto max-w-4xl px-6 py-20 lg:px-8 lg:py-28">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-500">
-                    Satıcılar için
-                </p>
+export default async function SaticilarPage() {
+  const { t } = await getServerI18n();
 
-                <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
-                    Emeğini ve ürününü daha şeffaf bir ticaret ortamında sun.
-                </h1>
+  return (
+    <main className="mx-auto max-w-4xl px-6 py-20 lg:px-8">
+      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+        {t("footer.sellersTitle")}
+      </p>
 
-                <div className="mt-8 space-y-6 text-lg leading-8 text-neutral-600">
-                    <p>
-                        Ahicadde; üreticilerin, esnafın ve işletmelerin ürünlerini
-                        internet üzerinden müşterilere ulaştırabilmesini sağlayan bir
-                        e-ticaret pazaryeri oluşturmayı hedefler.
-                    </p>
+      <h1 className="mt-5 text-4xl font-semibold tracking-tight">
+        {t("seller.sellersTitle")}
+      </h1>
 
-                    <p>
-                        Hizmet maliyetlerinin açıkça görülebilmesi ve satıcıların
-                        satışlarından elde ettikleri tutarı kolayca hesaplayabilmesi
-                        Ahicadde&apos;nin temel prensipleri arasında yer alır.
-                    </p>
+      <p className="mt-6 leading-8 text-foreground-muted">
+        {t("seller.sellersDescription")}
+      </p>
 
-                    <p>
-                        Amacımız, satıcının emeğini ve kazancını merkeze alan,
-                        sürdürülebilir ve şeffaf bir pazar yeri oluşturmaktır.
-                    </p>
-                </div>
-            </section>
-        </main>
-    );
+      <div className="mt-10 rounded-2xl border border-dashed border-border-strong bg-surface p-10 text-center">
+        <p className="text-foreground-muted">{t("seller.sellersEmpty")}</p>
+      </div>
+    </main>
+  );
 }

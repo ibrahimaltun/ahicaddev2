@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { getProduct } from "@/features/products/api";
+import { getServerI18n } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function ProductPage({
     params,
 }: ProductPageProps) {
     const { slug } = await params;
+    const { t } = await getServerI18n();
 
     let product;
 
@@ -55,7 +57,8 @@ export default async function ProductPage({
             <div className="grid gap-12 lg:grid-cols-2">
                 <div>
                     {product.images.length > 0 ? (
-                        <div className="aspect-square overflow-hidden rounded-2xl bg-neutral-100">
+                        <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-surface-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={product.images[0].image_url}
                                 alt={product.name}
@@ -63,15 +66,15 @@ export default async function ProductPage({
                             />
                         </div>
                     ) : (
-                        <div className="flex aspect-square items-center justify-center rounded-2xl bg-neutral-100 text-neutral-400">
-                            Görsel bulunmuyor
+                        <div className="flex aspect-square items-center justify-center rounded-2xl border border-dashed border-border-strong bg-surface-2 text-foreground-subtle">
+                            {t("products.noImage")}
                         </div>
                     )}
                 </div>
 
                 <div className="flex flex-col justify-center">
-                    <p className="text-sm font-medium text-neutral-500">
-                        Ürün
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+                        {t("products.eyebrow")}
                     </p>
 
                     <h1 className="mt-2 text-4xl font-semibold tracking-tight">
@@ -83,19 +86,19 @@ export default async function ProductPage({
                     </p>
 
                     {product.description && (
-                        <p className="mt-6 leading-7 text-neutral-600">
+                        <p className="mt-6 leading-7 text-foreground-muted">
                             {product.description}
                         </p>
                     )}
 
                     <div className="mt-8">
                         {product.stock > 0 ? (
-                            <p className="text-sm text-green-600">
-                                Stokta
+                            <p className="text-sm font-medium text-success-fg">
+                                ✓ {t("products.inStock")}
                             </p>
                         ) : (
-                            <p className="text-sm text-red-600">
-                                Stokta yok
+                            <p className="text-sm font-medium text-danger-fg">
+                                ✕ {t("products.outOfStock")}
                             </p>
                         )}
                     </div>

@@ -1,45 +1,47 @@
 import type { Metadata } from "next";
 
+import { getServerI18n } from "@/lib/i18n/server";
+
 export const metadata: Metadata = {
-    title: "Hizmet Ücretleri ve Şeffaf Maliyetler",
-    description:
-        "Ahicadde'nin hizmet ücretleri, satıcı maliyetleri ve şeffaf ticaret yaklaşımı hakkında bilgi edinin.",
-    alternates: {
-        canonical: "https://ahicadde.com/hizmet-ucretleri",
-    },
+  title: "Hizmet Ücretleri | Ahicadde",
+  alternates: {
+    canonical: "https://ahicadde.com/hizmet-ucretleri",
+  },
 };
 
-export default function HizmetUcretleriPage() {
-    return (
-        <main>
-            <section className="mx-auto max-w-4xl px-6 py-20 lg:px-8 lg:py-28">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-500">
-                    Şeffaf maliyet
-                </p>
+export default async function FeesPage() {
+  const { t } = await getServerI18n();
 
-                <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
-                    Hizmet ücretlerini açık ve anlaşılır tutuyoruz.
-                </h1>
+  const feeKeys = ["listing", "commission", "iban", "noHidden"] as const;
 
-                <div className="mt-8 space-y-6 text-lg leading-8 text-neutral-600">
-                    <p>
-                        Bir pazar yerinin maliyet yapısının hem satıcı hem de alıcı
-                        tarafından anlaşılabilir olması gerektiğine inanıyoruz.
-                    </p>
+  return (
+    <main className="mx-auto max-w-4xl px-6 py-20 lg:px-8">
+      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+        {t("footer.fees")}
+      </p>
 
-                    <p>
-                        Ahicadde&apos;nin hizmet ücretleri açık şekilde gösterilecek ve
-                        satıcıların satışlarından kendilerine kalan tutarı önceden
-                        hesaplayabilmeleri sağlanacaktır.
-                    </p>
+      <h1 className="mt-5 text-4xl font-semibold tracking-tight">
+        {t("fees.title")}
+      </h1>
 
-                    <p>
-                        Ücret politikamızın temel amacı; gereksiz maliyetleri azaltarak
-                        sürdürülebilir bir pazar yeri oluşturmak ve oluşabilecek
-                        avantajların ticaret ekosistemine yansıyabilmesini sağlamaktır.
-                    </p>
-                </div>
-            </section>
-        </main>
-    );
+      <p className="mt-6 leading-8 text-foreground-muted">
+        {t("fees.description")}
+      </p>
+
+      <ul className="mt-10 space-y-4">
+        {feeKeys.map((key) => (
+          <li
+            key={key}
+            className="rounded-2xl border border-border bg-surface p-6"
+          >
+            <h2 className="font-semibold">{t(`fees.${key}.title`)}</h2>
+
+            <p className="mt-2 leading-7 text-foreground-muted">
+              {t(`fees.${key}.description`)}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
 }

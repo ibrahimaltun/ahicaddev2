@@ -8,6 +8,8 @@ export interface ProductListParams {
     page?: number;
     limit?: number;
     category?: string;
+    /** 0 -> her istekte guncel veri (no-store). */
+    revalidate?: number;
 }
 
 export async function getProducts(
@@ -29,11 +31,13 @@ export async function getProducts(
 
     const query = searchParams.toString();
 
+    const revalidate = params.revalidate ?? 60;
+
     const response = await fetch(
         `${API_BASE_URL}/products${query ? `?${query}` : ""}`,
         {
             next: {
-                revalidate: 60,
+                revalidate,
             },
         },
     );

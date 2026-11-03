@@ -5,20 +5,23 @@ export type OrderStatus =
     | "delivered"
     | "cancelled";
 
-export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-    pending_payment: "Ödeme Bekleniyor",
-    processing: "Hazırlanıyor",
-    shipped: "Kargoya Verildi",
-    delivered: "Teslim Edildi",
-    cancelled: "İptal Edildi",
-};
+import type { BadgeTone } from "@/components/ui/badge";
 
-export const ORDER_STATUS_CLASSES: Record<OrderStatus, string> = {
-    pending_payment: "bg-amber-50 text-amber-700",
-    processing: "bg-blue-50 text-blue-700",
-    shipped: "bg-indigo-50 text-indigo-700",
-    delivered: "bg-green-50 text-green-700",
-    cancelled: "bg-red-50 text-red-700",
+export const ORDER_STATUSES: OrderStatus[] = [
+    "pending_payment",
+    "processing",
+    "shipped",
+    "delivered",
+    "cancelled",
+];
+
+/** Durum rozetlerinin renk tonlari (i18n metinleri sozlukte tutulur). */
+export const ORDER_STATUS_TONES: Record<OrderStatus, BadgeTone> = {
+    pending_payment: "warning",
+    processing: "info",
+    shipped: "primary",
+    delivered: "success",
+    cancelled: "danger",
 };
 
 export interface OrderItem {

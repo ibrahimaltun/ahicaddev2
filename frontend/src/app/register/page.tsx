@@ -4,10 +4,15 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/form";
+import { Notice } from "@/components/ui/notice";
 import { register } from "@/features/auth/api";
+import { useI18n } from "@/features/i18n/LocaleProvider";
 
 export default function RegisterPage() {
     const router = useRouter();
+    const { t } = useI18n();
 
     const [form, setForm] = useState({
         first_name: "",
@@ -41,18 +46,16 @@ export default function RegisterPage() {
 
         try {
             await register(form);
-            setSuccess(
-                "Hesabınız başarıyla oluşturuldu. Giriş sayfasına yönlendiriliyorsunuz...",
-            );
+            setSuccess(t("auth.registerSuccess"));
 
             setTimeout(() => {
                 router.push("/login");
             }, 1200);
-        } catch (error) {
+        } catch (submitError) {
             setError(
-                error instanceof Error
-                    ? error.message
-                    : "Kayıt sırasında bir hata oluştu.",
+                submitError instanceof Error
+                    ? submitError.message
+                    : t("auth.registerError"),
             );
         } finally {
             setLoading(false);
@@ -60,15 +63,15 @@ export default function RegisterPage() {
     }
 
     return (
-        <main className="min-h-screen bg-white">
+        <main className="min-h-screen bg-background">
             <section className="mx-auto flex max-w-md px-6 py-16">
-                <div className="w-full">
+                <div className="w-full rounded-2xl border border-border bg-surface p-8 shadow-sm">
                     <h1 className="text-3xl font-semibold tracking-tight">
-                        Hesap Oluştur
+                        {t("auth.registerTitle")}
                     </h1>
 
-                    <p className="mt-2 text-neutral-600">
-                        Ahicadde&apos;ye katılın.
+                    <p className="mt-2 text-foreground-muted">
+                        {t("auth.registerDescription")}
                     </p>
 
                     <form
@@ -76,13 +79,11 @@ export default function RegisterPage() {
                         className="mt-8 space-y-5"
                     >
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="mb-2 block text-sm font-medium">
-                                    Ad
-                                </label>
-
-                                <input
+                            <Field label={t("auth.firstName")} htmlFor="first_name">
+                                <Input
+                                    id="first_name"
                                     required
+                                    autoComplete="given-name"
                                     value={form.first_name}
                                     onChange={(event) =>
                                         updateField(
@@ -90,17 +91,14 @@ export default function RegisterPage() {
                                             event.target.value,
                                         )
                                     }
-                                    className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-neutral-900"
                                 />
-                            </div>
+                            </Field>
 
-                            <div>
-                                <label className="mb-2 block text-sm font-medium">
-                                    Soyad
-                                </label>
-
-                                <input
+                            <Field label={t("auth.lastName")} htmlFor="last_name">
+                                <Input
+                                    id="last_name"
                                     required
+                                    autoComplete="family-name"
                                     value={form.last_name}
                                     onChange={(event) =>
                                         updateField(
@@ -108,17 +106,13 @@ export default function RegisterPage() {
                                             event.target.value,
                                         )
                                     }
-                                    className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-neutral-900"
                                 />
-                            </div>
+                            </Field>
                         </div>
 
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
-                                E-posta
-                            </label>
-
-                            <input
+                        <Field label={t("auth.email")} htmlFor="email">
+                            <Input
+                                id="email"
                                 type="email"
                                 autoComplete="email"
                                 required
@@ -126,16 +120,12 @@ export default function RegisterPage() {
                                 onChange={(event) =>
                                     updateField("email", event.target.value)
                                 }
-                                className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-neutral-900"
                             />
-                        </div>
+                        </Field>
 
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
-                                Şifre
-                            </label>
-
-                            <input
+                        <Field label={t("auth.password")} htmlFor="password">
+                            <Input
+                                id="password"
                                 type="password"
                                 autoComplete="new-password"
                                 required
@@ -147,41 +137,37 @@ export default function RegisterPage() {
                                         event.target.value,
                                     )
                                 }
-                                className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-neutral-900"
                             />
-                        </div>
+                        </Field>
 
                         {success && (
-                            <div
-                                role="status"
-                                className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
-                            >
+                            <Notice tone="success" role="status">
                                 {success}
-                            </div>
+                            </Notice>
                         )}
 
                         {error && (
-                            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                            <Notice tone="error" role="alert">
                                 {error}
-                            </div>
+                            </Notice>
                         )}
 
-                        <button
+                        <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full rounded-xl bg-neutral-950 px-4 py-3 font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                            className="w-full py-3"
                         >
-                            {loading ? "Hesap oluşturuluyor..." : "Kayıt Ol"}
-                        </button>
+                            {loading ? t("auth.registering") : t("auth.registerButton")}
+                        </Button>
                     </form>
 
-                    <p className="mt-6 text-center text-sm text-neutral-600">
-                        Zaten hesabınız var mı?{" "}
+                    <p className="mt-6 text-center text-sm text-foreground-muted">
+                        {t("auth.haveAccount")}{" "}
                         <a
                             href="/login"
-                            className="font-medium text-neutral-950 underline"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
                         >
-                            Giriş yapın
+                            {t("auth.loginLink")}
                         </a>
                     </p>
                 </div>

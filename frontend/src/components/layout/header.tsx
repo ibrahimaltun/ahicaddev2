@@ -1,73 +1,149 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCart } from "@/features/cart/CartProvider";
+import { useI18n } from "@/features/i18n/LocaleProvider";
+import { useTheme } from "@/features/theme/ThemeProvider";
+import type { TranslationKey } from "@/lib/i18n/dictionary";
 
-const navigation = [
-    { href: "/products", label: "Ürünler" },
-    { href: "/kategoriler", label: "Kategoriler" },
-    { href: "/ahilik", label: "Ahilik" },
-    { href: "/satici-ol", label: "Satıcı Ol" },
+const NAVIGATION: { href: string; key: TranslationKey }[] = [
+    { href: "/products", key: "header.products" },
+    { href: "/kategoriler", key: "header.categories" },
+    { href: "/ahilik", key: "header.ahilik" },
+    { href: "/satici-ol", key: "header.becomeSeller" },
 ];
 
-export function Header() {
-    const {
-        user,
-        loading,
-        isAuthenticated,
-        isAdmin,
-        logout,
-    } = useAuth();
+function SunIcon() {
+    return (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" />
+        </svg>
+    );
+}
 
+function MoonIcon() {
+    return (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
+function toggleClasses(active: boolean) {
+    return active
+        ? "bg-primary text-primary-foreground shadow-sm"
+        : "text-foreground-muted hover:text-foreground";
+}
+
+export function Header() {
+    const { t, locale, setLocale } = useI18n();
+    const { theme, toggle: toggleTheme } = useTheme();
+    const { user, loading, isAuthenticated, isAdmin, logout } = useAuth();
     const { totalCount: cartItemCount } = useCart();
+    const pathname = usePathname();
+
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    const closeMobileMenu = () => setMobileOpen(false);
 
     async function handleLogout() {
         await logout();
     }
 
     return (
-        <header className="sticky top-0 z-50 border-b border-neutral-200/80 bg-white/95 backdrop-blur">
-            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
+        <header className="sticky top-0 z-50 border-b border-border bg-header-bg backdrop-blur">
+            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6 lg:px-8">
                 <Link
                     href="/"
-                    className="text-xl font-bold tracking-tight"
+                    className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"
                     aria-label="Ahicadde ana sayfa"
                 >
+                    <span
+                        aria-hidden="true"
+                        className="inline-block h-7 w-7 rounded-lg bg-primary text-primary-foreground"
+                    />
                     Ahicadde
                 </Link>
 
                 <nav
-                    aria-label="Ana navigasyon"
-                    className="hidden items-center gap-7 md:flex"
+                    aria-label={t("header.navigation")}
+                    className="hidden items-center gap-1 md:flex"
                 >
-                    {navigation.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-950"
-                        >
-                            {item.label}
-                        </Link>
-                    ))}
+                    {NAVIGATION.map((item) => {
+                        const active =
+                            pathname === item.href ||
+                            pathname.startsWith(`${item.href}/`);
+
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                                    active
+                                        ? "bg-primary-soft text-primary-soft-foreground"
+                                        : "text-foreground-muted hover:bg-surface-2 hover:text-foreground"
+                                }`}
+                            >
+                                {t(item.key)}
+                            </Link>
+                        );
+                    })}
                 </nav>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    {/* Dil: TR/EN */}
+                    <div
+                        role="group"
+                        aria-label={locale === "tr" ? "Dil seçimi" : "Language selection"}
+                        className="hidden items-center rounded-full border border-border bg-surface p-0.5 sm:flex"
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setLocale("tr")}
+                            aria-pressed={locale === "tr"}
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${toggleClasses(locale === "tr")}`}
+                        >
+                            TR
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setLocale("en")}
+                            aria-pressed={locale === "en"}
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${toggleClasses(locale === "en")}`}
+                        >
+                            EN
+                        </button>
+                    </div>
+
+                    {/* Tema: acik/koyu */}
+                    <button
+                        type="button"
+                        onClick={toggleTheme}
+                        aria-label={theme === "dark" ? t("header.switchToLight") : t("header.switchToDark")}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-foreground-muted transition-colors hover:text-foreground"
+                    >
+                        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+                    </button>
+
                     {!loading && !isAuthenticated && (
                         <>
                             <Link
                                 href="/login"
-                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 sm:inline-flex"
+                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-foreground-muted transition-colors hover:bg-surface-2 hover:text-foreground sm:inline-flex"
                             >
-                                Giriş Yap
+                                {t("common.login")}
                             </Link>
 
                             <Link
                                 href="/register"
-                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 sm:inline-flex"
+                                className="hidden rounded-full border border-border-strong px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-2 sm:inline-flex"
                             >
-                                Kayıt Ol
+                                {t("common.register")}
                             </Link>
                         </>
                     )}
@@ -76,44 +152,153 @@ export function Header() {
                         <>
                             <Link
                                 href="/account"
-                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 sm:inline-flex"
+                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-foreground-muted transition-colors hover:bg-surface-2 hover:text-foreground sm:inline-flex"
                             >
-                                {user?.first_name || "Hesabım"}
+                                {user?.first_name || t("header.myAccount")}
                             </Link>
 
                             {isAdmin && (
                                 <Link
                                     href="/admin"
-                                    className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 sm:inline-flex"
+                                    className="hidden rounded-full px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary-soft sm:inline-flex"
                                 >
-                                    Yönetim
+                                    {t("header.admin")}
                                 </Link>
                             )}
 
                             <button
                                 type="button"
                                 onClick={handleLogout}
-                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 sm:inline-flex"
+                                className="hidden rounded-full px-4 py-2 text-sm font-medium text-foreground-muted transition-colors hover:bg-surface-2 hover:text-foreground sm:inline-flex"
                             >
-                                Çıkış
+                                {t("header.logout")}
                             </button>
                         </>
                     )}
 
                     <Link
                         href="/cart"
-                        className="relative rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+                        className="relative inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover"
                     >
-                        Sepet
+                        {t("header.cart")}
 
                         {cartItemCount > 0 && (
-                            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-xs font-semibold text-neutral-950">
+                            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary-foreground px-1.5 py-0.5 text-xs font-bold text-primary">
                                 {cartItemCount}
                             </span>
                         )}
                     </Link>
+
+                    <button
+                        type="button"
+                        aria-expanded={mobileOpen}
+                        aria-label={t("header.menu")}
+                        onClick={() => setMobileOpen((open) => !open)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-foreground md:hidden"
+                    >
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            {mobileOpen ? (
+                                <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                            ) : (
+                                <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+                            )}
+                        </svg>
+                    </button>
                 </div>
             </div>
+
+            {mobileOpen && (
+                <div className="border-t border-border bg-surface px-6 py-4 md:hidden">
+                    <nav aria-label={t("header.navigation")} className="flex flex-col gap-1">
+                        {NAVIGATION.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={closeMobileMenu}
+                                className="rounded-xl px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
+                            >
+                                {t(item.key)}
+                            </Link>
+                        ))}
+
+                        <div className="my-2 h-px bg-border" />
+
+                        {!loading && !isAuthenticated && (
+                            <>
+                                <Link
+                                    href="/login"
+                                    onClick={closeMobileMenu}
+                                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
+                                >
+                                    {t("common.login")}
+                                </Link>
+
+                                <Link
+                                    href="/register"
+                                    onClick={closeMobileMenu}
+                                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
+                                >
+                                    {t("common.register")}
+                                </Link>
+                            </>
+                        )}
+
+                        {!loading && isAuthenticated && (
+                            <>
+                                <Link
+                                    href="/account"
+                                    onClick={closeMobileMenu}
+                                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
+                                >
+                                    {user?.first_name || t("header.myAccount")}
+                                </Link>
+
+                                {isAdmin && (
+                                    <Link
+                                        href="/admin"
+                                        onClick={closeMobileMenu}
+                                        className="rounded-xl px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
+                                    >
+                                        {t("header.admin")}
+                                    </Link>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        closeMobileMenu();
+                                        handleLogout();
+                                    }}
+                                    className="rounded-xl px-4 py-2.5 text-left text-sm font-medium text-foreground-muted transition-colors hover:bg-surface-2"
+                                >
+                                    {t("header.logout")}
+                                </button>
+                            </>
+                        )}
+
+                        <div className="my-2 h-px bg-border" />
+
+                        <div className="flex items-center gap-2 px-4 pb-1">
+                            <button
+                                type="button"
+                                onClick={() => setLocale("tr")}
+                                aria-pressed={locale === "tr"}
+                                className={`rounded-full border border-border px-3 py-1.5 text-xs font-semibold ${toggleClasses(locale === "tr")}`}
+                            >
+                                TR
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setLocale("en")}
+                                aria-pressed={locale === "en"}
+                                className={`rounded-full border border-border px-3 py-1.5 text-xs font-semibold ${toggleClasses(locale === "en")}`}
+                            >
+                                EN
+                            </button>
+                        </div>
+                    </nav>
+                </div>
+            )}
         </header>
     );
 }

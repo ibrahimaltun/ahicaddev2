@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCart } from "@/features/cart/CartProvider";
+import { useI18n } from "@/features/i18n/LocaleProvider";
 
 interface AddToCartButtonProps {
     productId: number;
@@ -18,6 +20,7 @@ export function AddToCartButton({
     disabled = false,
 }: AddToCartButtonProps) {
     const router = useRouter();
+    const { t } = useI18n();
     const {
         isAuthenticated,
         loading: authLoading,
@@ -69,41 +72,42 @@ export function AddToCartButton({
             setErrorMessage(
                 error instanceof Error
                     ? error.message
-                    : "Ürün sepete eklenemedi.",
+                    : t("products.addToCartError"),
             );
         }
     }
 
     const buttonLabel =
         status === "added"
-            ? "Sepete Eklendi ✓"
+            ? t("products.addedToCart")
             : status === "loading"
-              ? "Ekleniyor..."
-              : "Sepete Ekle";
+              ? t("products.addingToCart")
+              : t("products.addToCart");
 
     return (
         <div className="mt-8">
-            <button
-                type="button"
+            <Button
+                variant="primary"
+                size="lg"
                 disabled={disabled || authLoading || status === "loading"}
                 onClick={handleAddToCart}
-                className="w-full rounded-xl bg-neutral-950 px-6 py-3 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300"
+                className="w-full"
             >
                 {buttonLabel}
-            </button>
+            </Button>
 
             {status === "error" && errorMessage && (
                 <p
                     role="alert"
-                    className="mt-3 text-sm text-red-600"
+                    className="mt-3 text-sm text-danger-fg"
                 >
                     {errorMessage}
                 </p>
             )}
 
             {status === "added" && !disabled && (
-                <p className="mt-3 text-sm text-green-600">
-                    {productName} sepetinize eklendi.
+                <p className="mt-3 text-sm text-success-fg">
+                    {productName} {t("products.addedToCartMessage")}
                 </p>
             )}
         </div>

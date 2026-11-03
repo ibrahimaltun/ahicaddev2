@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getCategories } from "@/features/categories/api";
+import { getServerI18n } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
     title: "Kategoriler | Ahicadde",
-    description:
-        "Ahicadde'deki tüm ürün kategorilerini keşfedin. Gıda, tekstil, el sanatları ve daha fazlası.",
     alternates: {
         canonical: "https://ahicadde.com/kategoriler",
     },
@@ -15,29 +14,29 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
-    const categories = await getCategories();
+    const { t } = await getServerI18n();
+    const categories = await getCategories().catch(() => []);
 
     return (
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
             <div>
-                <p className="text-sm font-medium text-neutral-500">
-                    Kategoriler
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+                    {t("categories.label")}
                 </p>
 
                 <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                    Tüm Kategoriler
+                    {t("categories.title")}
                 </h1>
 
-                <p className="mt-4 max-w-2xl text-neutral-600">
-                    Ahicadde satıcılarının ürünlerini kategorilere göz atarak
-                    keşfedin.
+                <p className="mt-4 max-w-2xl text-foreground-muted">
+                    {t("categories.description")}
                 </p>
             </div>
 
             {categories.length === 0 ? (
-                <div className="mt-12 rounded-2xl border border-neutral-200 p-8 text-center">
-                    <p className="text-neutral-600">
-                        Henüz bir kategori oluşturulmadı.
+                <div className="mt-12 rounded-2xl border border-dashed border-border-strong bg-surface p-10 text-center">
+                    <p className="text-foreground-muted">
+                        {t("categories.empty")}
                     </p>
                 </div>
             ) : (
@@ -48,14 +47,14 @@ export default async function CategoriesPage() {
                                 href={`/products?category=${encodeURIComponent(
                                     category.slug,
                                 )}`}
-                                className="block rounded-2xl border border-neutral-200 p-6 transition hover:border-neutral-400"
+                                className="block rounded-2xl border border-border bg-surface p-6 transition hover:border-primary"
                             >
                                 <h2 className="text-lg font-semibold">
                                     {category.name}
                                 </h2>
 
-                                <p className="mt-2 text-sm text-neutral-500">
-                                    Ürünleri görüntüle
+                                <p className="mt-2 text-sm text-primary">
+                                    {t("categories.viewProducts")} →
                                 </p>
                             </Link>
                         </li>

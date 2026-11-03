@@ -3,26 +3,22 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { buttonClasses } from "@/components/ui/button";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useI18n } from "@/features/i18n/LocaleProvider";
 import { getOrders } from "@/features/orders/api";
-import {
-    ORDER_STATUS_CLASSES,
-    ORDER_STATUS_LABELS,
-    type Order,
-} from "@/features/orders/types";
+import { ORDER_STATUS_TONES, type Order } from "@/features/orders/types";
 
 export default function OrdersPage() {
+    const { t, locale } = useI18n();
     const {
         loading: authLoading,
         isAuthenticated,
     } = useAuth();
 
-    const [orders, setOrders] = useState<Order[] | null>(
-        null,
-    );
-    const [error, setError] = useState<string | null>(
-        null,
-    );
+    const [orders, setOrders] = useState<Order[] | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (authLoading || !isAuthenticated) {
@@ -40,9 +36,7 @@ export default function OrdersPage() {
                 }
             } catch {
                 if (!cancelled) {
-                    setError(
-                        "Siparişleriniz yüklenirken bir hata oluştu.",
-                    );
+                    setError(t("orders.loadError"));
                 }
             }
         })();
@@ -50,13 +44,13 @@ export default function OrdersPage() {
         return () => {
             cancelled = true;
         };
-    }, [authLoading, isAuthenticated]);
+    }, [authLoading, isAuthenticated, t]);
 
     if (authLoading || (!error && orders === null)) {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-                <p className="text-neutral-600">
-                    Siparişleriniz yükleniyor...
+                <p className="text-foreground-muted">
+                    {t("orders.loading")}
                 </p>
             </main>
         );
@@ -66,19 +60,18 @@ export default function OrdersPage() {
         return (
             <main className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
                 <h1 className="text-3xl font-semibold">
-                    Siparişleriniz için giriş yapın
+                    {t("orders.loginTitle")}
                 </h1>
 
-                <p className="mt-3 text-neutral-600">
-                    Sipariş geçmişinizi görüntülemek için giriş
-                    yapmanız gerekiyor.
+                <p className="mt-3 text-foreground-muted">
+                    {t("orders.loginDescription")}
                 </p>
 
                 <Link
                     href="/login"
-                    className="mt-6 inline-flex rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                    className="mt-6 inline-flex rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface-2"
                 >
-                    Giriş Yap
+                    {t("common.login")}
                 </Link>
             </main>
         );
@@ -86,34 +79,34 @@ export default function OrdersPage() {
 
     return (
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-            <p className="text-sm font-medium text-neutral-500">
-                Hesabım
+            <p className="text-sm font-medium text-foreground-subtle">
+                {t("orders.label")}
             </p>
 
             <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                Siparişlerim
+                {t("orders.title")}
             </h1>
 
             {error && (
                 <p
                     role="alert"
-                    className="mt-8 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                    className="mt-8 rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-fg"
                 >
                     {error}
                 </p>
             )}
 
             {!error && orders !== null && orders.length === 0 && (
-                <div className="mt-12 rounded-2xl border border-neutral-200 p-8 text-center">
-                    <p className="text-neutral-600">
-                        Henüz siparişiniz yok.
+                <div className="mt-12 rounded-2xl border border-border bg-surface p-8 text-center">
+                    <p className="text-foreground-muted">
+                        {t("orders.empty")}
                     </p>
 
                     <Link
                         href="/products"
-                        className="mt-6 inline-flex rounded-xl bg-neutral-950 px-5 py-3 text-sm font-medium text-white hover:bg-neutral-800"
+                        className={buttonClasses("primary", "md", "mt-6")}
                     >
-                        Alışverişe Başla
+                        {t("orders.continueShopping")}
                     </Link>
                 </div>
             )}
@@ -130,32 +123,37 @@ export default function OrdersPage() {
                             <Link
                                 key={order.id}
                                 href={`/orders/${order.id}`}
-                                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-neutral-200 p-6 transition hover:border-neutral-400"
+                                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-6 transition hover:border-primary"
                             >
                                 <div>
                                     <p className="font-medium">
-                                        Sipariş #{order.id}
+                                        {t("orders.orderNumber", { id: order.id })}
                                     </p>
 
-                                    <p className="mt-1 text-sm text-neutral-500">
+                                    <p className="mt-1 text-sm text-foreground-muted">
                                         {new Date(
                                             order.created_at,
-                                        ).toLocaleDateString("tr-TR", {
-                                            day: "numeric",
-                                            month: "long",
-                                            year: "numeric",
-                                        })}
+                                        ).toLocaleDateString(
+                                            locale === "en" ? "en-US" : "tr-TR",
+                                            {
+                                                day: "numeric",
+                                                month: "long",
+                                                year: "numeric",
+                                            },
+                                        )}
                                         {" · "}
-                                        {itemCount} ürün
+                                        {t("orders.itemsCount", { count: itemCount })}
                                     </p>
                                 </div>
 
                                 <div className="flex items-center gap-6">
-                                    <span
-                                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${ORDER_STATUS_CLASSES[order.status]}`}
+                                    <Badge
+                                        tone={
+                                            ORDER_STATUS_TONES[order.status] as BadgeTone
+                                        }
                                     >
-                                        {ORDER_STATUS_LABELS[order.status]}
-                                    </span>
+                                        {t(`orders.status.${order.status}`)}
+                                    </Badge>
 
                                     <p className="font-semibold">
                                         {Number(order.total_price).toFixed(2)}{" "}
@@ -170,4 +168,3 @@ export default function OrdersPage() {
         </main>
     );
 }
-

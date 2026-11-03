@@ -1,3 +1,5 @@
+export type SellerApplicationStatus = "pending" | "approved" | "rejected";
+
 export interface SellerApplication {
     id: number;
     user_id: number;
@@ -12,6 +14,8 @@ export interface SellerApplication {
     product_category: string;
     product_description: string;
     estimated_product_count: string;
-    status: "pending" | "approved" | "rejected";
+    status: SellerApplicationStatus;
+    admin_note: string | null;
+    decided_at: string | null;
     created_at: string;
 }
