@@ -28,7 +28,7 @@ export default function HizmetUcretleriPage() {
                     </p>
 
                     <p>
-                        Ahicadde'nin hizmet ücretleri açık şekilde gösterilecek ve
+                        Ahicadde&apos;nin hizmet ücretleri açık şekilde gösterilecek ve
                         satıcıların satışlarından kendilerine kalan tutarı önceden
                         hesaplayabilmeleri sağlanacaktır.
                     </p>

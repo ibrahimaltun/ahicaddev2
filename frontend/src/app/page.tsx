@@ -1,3 +1,7 @@
+"use client";
+
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-neutral-950">
@@ -20,19 +24,19 @@ export default function Home() {
           </p>
 
           <div className="mt-10 flex flex-wrap gap-4">
-            <a
-              href="/urunler"
-              className="rounded-full border border-neutral-200 px-7 py-3.5 text-sm font-medium text-white transition hover:bg-neutral-100"
+            <Link
+              href="/products"
+              className="rounded-full border border-neutral-200 px-7 py-3.5 text-sm font-medium text-neutral-950 transition hover:bg-neutral-100"
             >
               Ürünleri Keşfet
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/satici-ol"
               className="rounded-full border border-neutral-200 px-7 py-3.5 text-sm font-medium transition hover:bg-neutral-100"
             >
               Satıcı Ol
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -90,7 +94,7 @@ export default function Home() {
           </p>
 
           <p>
-            Bu nedenle Ahicadde'de yalnızca ürünleri değil; emeği, üretimi,
+            Bu nedenle Ahicadde&apos;de yalnızca ürünleri değil; emeği, üretimi,
             esnafı, tüketiciyi ve aralarındaki dayanışmayı merkeze alan bir
             e-ticaret ekosistemi kuruyoruz.
           </p>

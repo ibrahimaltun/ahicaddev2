@@ -49,7 +49,17 @@ export function AuthProvider({
     }, []);
 
     useEffect(() => {
-        refreshUser();
+        let cancelled = false;
+
+        (async () => {
+            if (!cancelled) {
+                await refreshUser();
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
     }, [refreshUser]);
 
     const logout = useCallback(async () => {

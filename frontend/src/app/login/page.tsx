@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SubmitEvent } from "react";
+import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { login } from "@/features/auth/api";
@@ -18,7 +18,7 @@ export default function LoginPage() {
     const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
 
-    async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
         setError("");

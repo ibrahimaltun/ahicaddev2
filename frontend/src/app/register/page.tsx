@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FormEvent, SubmitEvent } from "react";
+import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { register } from "@/features/auth/api";
@@ -31,7 +31,7 @@ export default function RegisterPage() {
     }
 
     async function handleSubmit(
-        event: SubmitEvent<HTMLFormElement>,
+        event: FormEvent<HTMLFormElement>,
     ) {
         event.preventDefault();
 
@@ -68,7 +68,7 @@ export default function RegisterPage() {
                     </h1>
 
                     <p className="mt-2 text-neutral-600">
-                        Ahicadde'ye katılın.
+                        Ahicadde&apos;ye katılın.
                     </p>
 
                     <form

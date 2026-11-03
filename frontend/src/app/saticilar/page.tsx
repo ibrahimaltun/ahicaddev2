@@ -31,7 +31,7 @@ export default function SaticilarPage() {
                     <p>
                         Hizmet maliyetlerinin açıkça görülebilmesi ve satıcıların
                         satışlarından elde ettikleri tutarı kolayca hesaplayabilmesi
-                        Ahicadde'nin temel prensipleri arasında yer alır.
+                        Ahicadde&apos;nin temel prensipleri arasında yer alır.
                     </p>
 
                     <p>

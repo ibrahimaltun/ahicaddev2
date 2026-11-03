@@ -31,7 +31,7 @@ export default function SaticiOlPage() {
         <div className="mt-10">
           <Link
             href="/satici-ol/basvuru"
-            className="rounded-full bg-neutral-750 px-7 py-3.5 text-sm font-medium text-white text-neutral-700 hover:bg-neutral-200 transition"
+            className="rounded-full bg-neutral-950 px-7 py-3.5 text-sm font-medium text-white transition hover:bg-neutral-800"
           >
             Satıcı Başvurusu Başlat
           </Link>

@@ -14,7 +14,7 @@ export default function AhilikPage() {
         <main>
             <section className="mx-auto max-w-4xl px-6 py-20 lg:px-8 lg:py-28">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-500">
-                    Ahicadde'nin kuruluş felsefesi
+                    Ahicadde&apos;nin kuruluş felsefesi
                 </p>
 
                 <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -23,7 +23,7 @@ export default function AhilikPage() {
 
                 <div className="mt-8 space-y-6 text-lg leading-8 text-neutral-600">
                     <p>
-                        Ahilik, Anadolu'da ticaret ve esnaf kültürünün gelişiminde önemli
+                        Ahilik, Anadolu&apos;da ticaret ve esnaf kültürünün gelişiminde önemli
                         bir yere sahip olan; dürüstlük, güven, dayanışma, paylaşma ve
                         emeğe saygı gibi değerleri öne çıkaran köklü bir gelenektir.
                     </p>
