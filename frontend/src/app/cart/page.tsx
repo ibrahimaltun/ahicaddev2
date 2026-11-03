@@ -88,6 +88,8 @@ export default function CartPage() {
         0,
     );
 
+    const hasSampleItems = items.some((item) => item.product.is_sample);
+
     return (
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
             <div className="flex items-end justify-between">
@@ -111,6 +113,15 @@ export default function CartPage() {
                     {t("cart.clearCart")}
                 </button>
             </div>
+
+            {hasSampleItems && (
+                <div
+                    role="note"
+                    className="mt-6 rounded-xl border border-warning-border bg-warning-bg px-4 py-3 text-sm text-warning-fg"
+                >
+                    ⚠ {t("cart.sampleWarning")}
+                </div>
+            )}
 
             {error && (
                 <p

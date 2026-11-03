@@ -332,9 +332,30 @@ def test_catalog_import_creates_categories_and_products(admin, monkeypatch):
     public = admin.get(f"{API}/products")
     assert len(public.json()) == 2
 
+    # Katalogdan aktarilan her urun 'ornek urun' olarak isaretlenmeli.
+    assert all(item["is_sample"] is True for item in public.json())
+
     detail = admin.get(f"{API}/products/essence-mascara")
     assert detail.status_code == 200
     assert detail.json()["images"][0]["image_url"] == "https://cdn.dummyjson.com/mascara.webp"
+    assert detail.json()["is_sample"] is True
+
+    # Admin olmayan (manuel olusturulan) urunler ornek isaretli olmamali.
+    admin.post(f"{API}/categories", json={"name": "Manuel Kategori", "slug": "manuel-kategori"})
+    manual_category = admin.get(f"{API}/categories/manuel-kategori").json()
+
+    manual = admin.post(
+        f"{API}/products",
+        json={
+            "name": "El Yapimi Test",
+            "slug": "el-yapimi-test",
+            "price": "149.99",
+            "stock": 3,
+            "category_id": manual_category["id"],
+        },
+    )
+    assert manual.status_code == 201
+    assert manual.json()["is_sample"] is False
 
 
 def test_catalog_import_requires_admin(customer):

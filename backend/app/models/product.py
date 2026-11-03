@@ -45,6 +45,14 @@ class Product(Base):
         default=0,
     )
 
+    # Ornek katalog (DummyJSON gibi harici kaynaklardan) aktarilan gecici
+    # urunler icin isaret; gercek satici urunlerinde False kalir.
+    is_sample: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

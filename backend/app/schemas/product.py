@@ -31,6 +31,7 @@ class ProductResponse(BaseModel):
     description: str | None
     price: Decimal
     stock: int
+    is_sample: bool
     is_active: bool
     category_id: int | None
     brand_id: int | None

@@ -17,7 +17,7 @@ export default async function AhilikPage() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-20 lg:px-8">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-        {t("header.ahilik")}
+        {t("ahilik.label")}
       </p>
 
       <h1 className="mt-5 text-4xl font-semibold tracking-tight">

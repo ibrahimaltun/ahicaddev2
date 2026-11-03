@@ -303,5 +303,78 @@ frontend'e üç yeni sayfa + hesabım doğrulama kartı geldi.
 | `npx tsc --noEmit` / `npx eslint src` / `npx next build` | ✅ 0 hata / 0 problem / 22 route |
 | Smoke sonrası | uvicorn+next durduruldu, smoke container silindi, /tmp temizlendi |
 
+## 10. Addendum — Gerçekçi Vitrin, Örnek Ürün Uyarısı, Arama, Öneriler ve Tam SEO (2026-11-03)
+
+### Vitrin (ana sayfa) — gerçek e-ticaret düzeni
+- Header sadeleştirildi: "Ürünler / Kategoriler / Ahilik / Satıcı Ol" sayfa linkleri kaldırıldı
+  (bu sayfalar footer'dan ve doğrudan URL'den erişilebilir kalmaya devam eder — SEO için 200 döner).
+  Yerine profesyonel e-ticaret standardı olarak **arama kutusu** eklendi (desktop'ta ortada,
+  mobil menüde üstte; `role="search"`, `/products?q=...`'e gider).
+- Ana sayfa bölümleri: Ahilik hero'su (istenen metin aynen korundu: "AHİLİK ANLAYIŞINDAN İLHAM
+  ALAN E-TİCARET / Emeğin değerini koruyan, dayanışmayla büyüyen pazar yeri. / Ahicadde; ahilik
+  kültürünün dayanışma, paylaşma, dürüstlük ve karşılıklı güven anlayışından ilham alan yeni nesil
+  bir e-ticaret pazaryeridir.") → güven şeridi (3 madde) → Kategoriler → Öne Çıkan Ürünler (8) →
+  Vitrine Yeni Eklenenler (4) → Değerler → Ahilik kültürü metni.
+
+### Geçici (internetten çekilen) ürünler ve "örnek ürün" uyarısı
+- Ürünler admin `/admin/catalog/import` ile DummyJSON'dan (halka açık API) çekilmeye devam eder;
+  artık `products.is_sample` kolonuyla **örnek ürün** olarak işaretlenir (migration `a9b8c7d6e5f4`,
+  `server_default=false` — mevcut ürünler etkilenmez).
+- Uyarı noktaları (fake ürün olduğu belirtilir, akış engellenmez):
+  - Ürün kartlarında sol üstte "Örnek ürün" rozeti,
+  - Ürün detay sayfasında sarı uyarı kutusu (`products.sampleWarning`),
+  - Sepet sayfasında `cart.sampleWarning` uyarısı (`item.product.is_sample` ile),
+  - Ödeme sayfasında `checkout.sampleWarning` uyarısı (ödeme bölümünün hemen üstünde).
+- Örnek ürünler siparişe dahil edilebilir; sipariş süreci deneme amaçlı olduğu uyarı metinlerinde
+  açıkça yazılır (havale/EFT adımı gerçek satıcı işlemi değildir).
+
+### Yeni backend yetenekleri
+- `GET /api/v1/products?q=<metin>` — ürün adında `ILIKE` arama (header arama kutusu için).
+- `GET /api/v1/products/{slug}/related?limit=4..12` — önerilen ürünler: önce aynı kategori,
+  eksik kalırsa en yeni diğer ürünlerle tamamlanır; ürünün kendisi hariç.
+- `ProductResponse.is_sample` ve `CartProductResponse.is_sample` alanları eklendi (sepet/ödeme
+  uyarıları bu alanla sürülür).
+- `backend/scripts/create_admin.py` — ilk admin'i oluşturur / mevcut kullanıcıyı yükseltir:
+  `python scripts/create_admin.py --email admin@ahicadde.com --password ... [--promote]`.
+
+### Tam SEO optimizasyonu
+- Ürün detay: `generateMetadata` (başlık, açıklama, canonical `/products/{slug}`, OG image = ürün
+  görseli, Twitter card, `product:price:*`); Product JSON-LD'ye `itemCondition=NewCondition` ve
+  `seller=Organization` eklendi.
+- `/products`: sayfa metadata'sı + canonical (`?category=` varyantı için ayrı); `?q=` arama
+  sonuçları `noindex, follow`. ItemList JSON-LD (konum + ürün URL'leri).
+- Ana sayfa: `WebSite` + `Organization` JSON-LD (`@graph`, SearchAction dahil) + sayfa metadata'sı.
+- Marka OG görseli: `app/opengraph-image.tsx` (next/og, 1200×630 PNG, `/opengraph-image`).
+- Dinamik `sitemap.xml`: statik sayfalar + tüm ürün slug'ları + kategori URL'leri (API'den,
+  `API_INTERNAL_URL`; API kapalıysa boş listeyle sessiz düşer). `revalidate=600` — içe aktarılan
+  ürünler ~10 dk içinde sitemap'a yansır.
+- `not-found.tsx` (404: marka uyumlu, ana sayfa/ürünler CTA'lı, noindex).
+- Özel/gizli rotalar (`login`, `register`, `account`, `orders`, `orders/[id]`, `admin`, `cart`,
+  `checkout`, `email-dogrula`, `sifremi-unuttum`, `sifre-sifirla`, `satici-ol/basvuru`):
+  server `layout.tsx` ile `robots: noindex, nofollow` (client page'lerde metadata export edilemediği
+  için layout yolu seçildi). `robots.txt` Disallow listesiyle uyumlu.
+
+### Admin paneline erişim (özet)
+- Yetki modeli: `users.role='admin'` → JWT `role` claim → `require_admin` dependency (403).
+  Header'da "Yönetim" bağlantısı ve `/admin` paneli yalnızca bu rolle görünür/açılır.
+- İlk admin: `backend/scripts/create_admin.py` (yeni hesap veya `--promote` ile mevcut hesap).
+- Sonraki adminler: Admin Paneli → Kullanıcılar → rolü "admin" yap (idempotent, kendi rolünü
+  düşürme korumaları mevcut).
+
+### Doğrulama
+| Kontrol | Sonuç |
+|---|---|
+| `pytest tests/` | ✅ 99 passed (96 eski + 3 yeni: q arama, related, import is_sample) |
+| `alembic upgrade head` (5433 Postgres) | ✅ head `a9b8c7d6e5f4` (products.is_sample) |
+| `npx tsc --noEmit` / `npx eslint src` / `npm run build` | ✅ 0 hata / 0 problem / 25 rota (+opengraph-image, not-found, 9 noindex layout) |
+| Canlı: admin login → `/admin/catalog/import` (internet/DummyJSON) | ✅ 30 ürün + 4 kategori, tümü `is_sample=true` |
+| Canlı: ana sayfa | ✅ 200; hero metni, güven şeridi, 8 öne çıkan + 4 yeni ürün, örnek rozetleri |
+| Canlı: `/products/kiwi` | ✅ örnek ürün uyarısı + "Benzer Ürünler" + Product JSON-LD (NewCondition) |
+| Canlı: `/products?q=juice` | ✅ sonuç sayfası, `noindex` |
+| Canlı: sepete ekle → sipariş | ✅ `is_sample=true` sepet yanıtında; sipariş `pending_payment` |
+| Canlı: `/sitemap.xml` | ✅ 30 ürün + kategori URL'leri; `/robots.txt`, `/opengraph-image`, 404 sayfası |
+| Smoke sonrası | uvicorn+next durduruldu, `ahicadde-smoke-pg` silindi |
+
+
 
 

@@ -22,11 +22,11 @@ def category(admin):
     return res.json()
 
 
-def create_product(admin, category_id, slug="lokum", stock=10):
+def create_product(admin, category_id, slug="lokum", stock=10, name="Haci Lokum"):
     return admin.post(
         f"{API}/products",
         json={
-            "name": "Haci Lokum",
+            "name": name,
             "slug": slug,
             "description": "El yapimi Afyon lokumu",
             "price": "129.90",
@@ -271,6 +271,59 @@ class TestProducts:
 
     def test_get_unknown_product(self, admin):
         res = admin.get(f"{API}/products/olmayan-urun")
+        assert res.status_code == 404
+
+    def test_list_search_by_name(self, admin, category):
+        create_product(admin, category_id=category["id"], slug="lokum")
+        create_product(admin, category_id=category["id"], slug="cay", name="Rize Çayı")
+
+        res = admin.get(f"{API}/products?q=rize")
+        assert res.status_code == 200
+        assert len(res.json()) == 1
+        assert res.json()[0]["slug"] == "cay"
+
+        res = admin.get(f"{API}/products?q=LOKUM")
+        assert res.status_code == 200
+        assert len(res.json()) == 1
+        assert res.json()[0]["slug"] == "lokum"
+
+        res = admin.get(f"{API}/products?q=olmayan")
+        assert res.status_code == 200
+        assert res.json() == []
+
+    def test_related_products(self, admin, category):
+        admin.post(f"{API}/categories", json={"name": "Tekstil", "slug": "tekstil"})
+        tekstil = admin.get(f"{API}/categories/tekstil").json()
+
+        for i in range(5):
+            create_product(admin, category_id=category["id"], slug=f"urun-{i}")
+
+        create_product(
+            admin,
+            category_id=tekstil["id"],
+            slug="diger-kategori-urunu",
+            name="Diğer",
+        )
+
+        # Ayni kategoriden 4 adet onerilmeli; urunun kendisi olmamali.
+        res = admin.get(f"{API}/products/urun-0/related")
+        assert res.status_code == 200
+
+        related = res.json()
+        assert len(related) == 4
+        assert all(item["slug"] != "urun-0" for item in related)
+        assert all(item["category_id"] == category["id"] for item in related)
+
+        # Kategoride yeterli urun yoksa en yeni diger urunlerle tamamlanmali.
+        res = admin.get(f"{API}/products/urun-4/related?limit=6")
+        assert res.status_code == 200
+
+        related = res.json()
+        assert len(related) == 5
+        assert any(item["slug"] == "diger-kategori-urunu" for item in related)
+
+    def test_related_unknown_product(self, admin):
+        res = admin.get(f"{API}/products/olmayan-urun/related")
         assert res.status_code == 404
 
 

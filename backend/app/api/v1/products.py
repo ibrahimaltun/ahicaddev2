@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -71,6 +71,7 @@ def list_products(
     page: int = 1,
     limit: int = 20,
     category: str | None = None,
+    q: str | None = Query(default=None, max_length=200),
     db: Session = Depends(get_db),
 ):
     if page < 1:
@@ -93,6 +94,10 @@ def list_products(
 
     if category is not None:
         query = query.where(Product.category.has(Category.slug == category))
+
+    if q is not None and q.strip():
+        needle = f"%{q.strip().lower()}%"
+        query = query.where(Product.name.ilike(needle))
 
     products = db.scalars(
         query.offset(offset).limit(limit)
@@ -123,3 +128,67 @@ def get_product(
         )
 
     return product
+
+
+@router.get(
+    "/{slug}/related",
+    response_model=list[ProductResponse],
+)
+def get_related_products(
+    slug: str,
+    limit: int = Query(default=4, ge=1, le=12),
+    db: Session = Depends(get_db),
+):
+    """Ürüne benzer önerileri döndürür: once ayni kategori, sonra en yeni urunler."""
+    product = db.scalar(
+        select(Product).where(
+            Product.slug == slug,
+            Product.is_active.is_(True),
+        )
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found",
+        )
+
+    base_query = (
+        select(Product)
+        .options(joinedload(Product.category))
+        .where(
+            Product.is_active.is_(True),
+            Product.id != product.id,
+        )
+        .order_by(Product.id.desc())
+        .limit(limit)
+    )
+
+    related: list[Product] = []
+
+    if product.category_id is not None:
+        related = list(
+            db.scalars(
+                base_query.where(Product.category_id == product.category_id)
+            ).all()
+        )
+
+    if len(related) < limit:
+        seen_ids = {product.id, *(item.id for item in related)}
+        fallback = [
+            item
+            for item in db.scalars(
+                select(Product)
+                .options(joinedload(Product.category))
+                .where(
+                    Product.is_active.is_(True),
+                    Product.id.notin_(seen_ids),
+                )
+                .order_by(Product.id.desc())
+                .limit(limit - len(related))
+            ).all()
+            if item.id not in seen_ids
+        ]
+        related.extend(fallback)
+
+    return related

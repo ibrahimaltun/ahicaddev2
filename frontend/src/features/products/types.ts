@@ -12,6 +12,7 @@ export interface Product {
     description: string | null;
     price: string;
     stock: number;
+    is_sample: boolean;
     is_active: boolean;
     category_id: number | null;
     brand_id: number | null;

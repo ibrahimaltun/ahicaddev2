@@ -450,6 +450,7 @@ def import_external_catalog(
             stock=external_product.stock,
             category_id=category.id,
             brand_id=None,
+            is_sample=True,
             is_active=True,
         )
         db.add(product)

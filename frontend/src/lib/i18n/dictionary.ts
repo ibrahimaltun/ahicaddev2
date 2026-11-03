@@ -20,10 +20,6 @@ export const tr = {
         register: "Kayıt Ol",
     },
     header: {
-        products: "Ürünler",
-        categories: "Kategoriler",
-        ahilik: "Ahilik",
-        becomeSeller: "Satıcı Ol",
         myAccount: "Hesabım",
         admin: "Yönetim",
         logout: "Çıkış",
@@ -31,6 +27,8 @@ export const tr = {
         home: "Ana sayfa",
         navigation: "Ana navigasyon",
         menu: "Menü",
+        searchPlaceholder: "Ürün ara...",
+        searchButton: "Ara",
         switchToLight: "Açık moda geç",
         switchToDark: "Koyu moda geç",
         switchToTr: "Türkçe'ye geç",
@@ -73,9 +71,19 @@ export const tr = {
         featuredDescription:
             "Ahicadde vitrininde öne çıkan ürünleri keşfedin, alışverişe hemen başlayın.",
         viewAll: "Tümünü Gör",
+        newArrivalsLabel: "Yeni Gelenler",
+        newArrivalsTitle: "Vitrine Yeni Eklenenler",
+        newArrivalsDescription:
+            "Vitrine en son eklenen ürünlere göz atın, kaçırmayın.",
         categoriesTitle: "Kategoriler",
         categoriesDescription:
             "İhtiyacınıza uygun ürünleri kategorilere göz atarak bulun.",
+        trust1Title: "Güvenli alışveriş",
+        trust1Description: "Ödemeniz ve alıcı hakları ahilik anlayışıyla korunur.",
+        trust2Title: "Satıcı emeği korunur",
+        trust2Description: "Şeffaf ve düşük hizmet maliyetleriyle adil ticaret.",
+        trust3Title: "Dayanışmayla büyür",
+        trust3Description: "Üretici, satıcı ve alıcı birlikte değer üretir.",
         noProducts:
             "Vitrin henüz hazırlanıyor. Örnek katalog yönetim panelinden içe aktarılabilir.",
         sampleNote:
@@ -87,11 +95,17 @@ export const tr = {
         label: "Ürünler",
         allTitle: "Tüm Ürünler",
         categoryTitle: "Kategori Ürünleri",
+        searchTitle: 'Arama sonuçları: "{query}"',
         description: "Ahicadde satıcılarının ürünlerini keşfedin.",
         clearFilter: "Kategori filtresini temizle",
         noProducts: "Ürün bulunamadı.",
         noImage: "Görsel bulunmuyor",
         eyebrow: "Ürün",
+        sampleBadge: "Örnek ürün",
+        sampleWarning:
+            "Bu ürün, gerçek satıcılar katılana kadar vitrinin boş kalmaması için örnek katalogdan gösterilen geçici bir üründür; gerçek bir satıcı ürünü değildir.",
+        relatedTitle: "Benzer Ürünler",
+        relatedDescription: "Bu ürüne bakarken şunlar da ilginizi çekebilir.",
         inStock: "Stokta",
         outOfStock: "Stokta yok",
         addToCart: "Sepete Ekle",
@@ -119,6 +133,8 @@ export const tr = {
         empty: "Sepetiniz boş.",
         continueShopping: "Alışverişe Devam Et",
         clearCart: "Sepeti Temizle",
+        sampleWarning:
+            "Sepetinizde örnek katalogdan gösterilen geçici ürünler var. Sipariş süreci deneme amaçlıdır; gerçek bir satıcı işlemi değildir.",
         remove: "Kaldır",
         quantity: "Adet",
         summary: "Sipariş Özeti",
@@ -153,6 +169,8 @@ export const tr = {
         paymentIbanTitle: "Havale / EFT (IBAN)",
         paymentIbanDescription:
             "Ödeme talimatları ve IBAN bilgisi siparişinizi oluşturduktan sonra gösterilecektir.",
+        sampleWarning:
+            "Sepetinizde örnek katalogdan gösterilen geçici ürünler var. Bu sipariş ödeme adımını denemek içindir; gerçek bir satıcı işlemi değildir.",
         summary: "Sipariş Özeti",
         total: "Toplam",
         backToCart: "Sepete dön",
@@ -373,6 +391,7 @@ export const tr = {
         sellersEmpty: "Onaylanmış satıcı yakında burada listelenecek.",
     },
     ahilik: {
+        label: "Ahilik",
         title: "Ahilik kültürü ve Ahicadde",
         paragraphs:
             "Ahilik; Anadolu'da yüzyıllardır süregelen, esnaf ve zanaatkârları çırak-kalfa-usta hiyerarşisi etrafında örgütleyen, mesleki ahlakı, güveni ve dayanışmayı merkeze alan köklü bir gelenektir.|Ahicadde, bu geleneğin dijital pazar yeri hâlini alır: Üreticinin emeği korunur, alıcı dürüst fiyat bulur, platform iki tarafı da bir arada değer üreten bir ekosistem olarak konumlandırır.|Amacımız; ticarette güveni ve paylaşmayı merkeze alan, herkesin kazanabildiği bir pazar yeri kültürünü dijital ortamda kalıcı kılmaktır.",
@@ -548,10 +567,6 @@ export const en: Dictionary = {
         register: "Sign up",
     },
     header: {
-        products: "Products",
-        categories: "Categories",
-        ahilik: "Ahilik",
-        becomeSeller: "Become a Seller",
         myAccount: "My Account",
         admin: "Admin",
         logout: "Log out",
@@ -559,6 +574,8 @@ export const en: Dictionary = {
         home: "Home",
         navigation: "Main navigation",
         menu: "Menu",
+        searchPlaceholder: "Search products...",
+        searchButton: "Search",
         switchToLight: "Switch to light mode",
         switchToDark: "Switch to dark mode",
         switchToTr: "Türkçe'ye geç",
@@ -601,9 +618,19 @@ export const en: Dictionary = {
         featuredDescription:
             "Explore featured products in the Ahicadde storefront and start shopping right away.",
         viewAll: "View All",
+        newArrivalsLabel: "New Arrivals",
+        newArrivalsTitle: "Just Added to the Storefront",
+        newArrivalsDescription:
+            "Take a look at the latest additions to our storefront.",
         categoriesTitle: "Categories",
         categoriesDescription:
             "Find what you need by browsing our product categories.",
+        trust1Title: "Secure shopping",
+        trust1Description: "Your payment and buyer rights are protected in the Ahilik spirit.",
+        trust2Title: "Sellers' work is protected",
+        trust2Description: "Fair trade with transparent and low service costs.",
+        trust3Title: "Grows with solidarity",
+        trust3Description: "Producers, sellers and buyers create value together.",
         noProducts:
             "The storefront is being prepared. A sample catalog can be imported from the admin panel.",
         sampleNote:
@@ -615,11 +642,17 @@ export const en: Dictionary = {
         label: "Products",
         allTitle: "All Products",
         categoryTitle: "Category Products",
+        searchTitle: 'Search results: "{query}"',
         description: "Discover products from Ahicadde sellers.",
         clearFilter: "Clear category filter",
         noProducts: "No products found.",
         noImage: "No image",
         eyebrow: "Product",
+        sampleBadge: "Sample product",
+        sampleWarning:
+            "This is a temporary product shown from a sample catalog until real sellers join; it is not a real seller product.",
+        relatedTitle: "Similar Products",
+        relatedDescription: "While looking at this product, you may also like these.",
         inStock: "In stock",
         outOfStock: "Out of stock",
         addToCart: "Add to Cart",
@@ -647,6 +680,8 @@ export const en: Dictionary = {
         empty: "Your cart is empty.",
         continueShopping: "Continue Shopping",
         clearCart: "Clear Cart",
+        sampleWarning:
+            "Your cart contains temporary products from a sample catalog. The checkout flow is for trial purposes; it is not a real seller transaction.",
         remove: "Remove",
         quantity: "Quantity",
         summary: "Order Summary",
@@ -680,6 +715,8 @@ export const en: Dictionary = {
         paymentIbanTitle: "Bank Transfer / EFT (IBAN)",
         paymentIbanDescription:
             "Payment instructions and IBAN details will be shown after your order is created.",
+        sampleWarning:
+            "Your cart contains temporary products from a sample catalog. This order is for trying out the checkout flow; it is not a real seller transaction.",
         summary: "Order Summary",
         total: "Total",
         backToCart: "Back to cart",
@@ -903,6 +940,7 @@ export const en: Dictionary = {
         sellersEmpty: "An approved seller will be listed here soon.",
     },
     ahilik: {
+        label: "Ahilik",
         title: "The Ahilik culture and Ahicadde",
         paragraphs:
             "Ahilik is a rooted Anatolian tradition that has organized craftsmen and artisans around the apprentice-journeyman-master hierarchy for centuries, centering professional ethics, trust and solidarity.|Ahicadde turns this tradition into a digital marketplace: the producer's labor is protected, the buyer finds honest prices, and the platform positions itself as an ecosystem where both sides create value together.|Our goal is to make a marketplace culture built on trust and sharing, where everyone can earn, permanent in the digital world.",

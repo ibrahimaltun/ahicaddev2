@@ -1,21 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCart } from "@/features/cart/CartProvider";
 import { useI18n } from "@/features/i18n/LocaleProvider";
 import { useTheme } from "@/features/theme/ThemeProvider";
-import type { TranslationKey } from "@/lib/i18n/dictionary";
-
-const NAVIGATION: { href: string; key: TranslationKey }[] = [
-    { href: "/products", key: "header.products" },
-    { href: "/kategoriler", key: "header.categories" },
-    { href: "/ahilik", key: "header.ahilik" },
-    { href: "/satici-ol", key: "header.becomeSeller" },
-];
 
 function SunIcon() {
     return (
@@ -45,9 +37,10 @@ export function Header() {
     const { theme, toggle: toggleTheme } = useTheme();
     const { user, loading, isAuthenticated, isAdmin, logout } = useAuth();
     const { totalCount: cartItemCount } = useCart();
-    const pathname = usePathname();
+    const router = useRouter();
 
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const closeMobileMenu = () => setMobileOpen(false);
 
@@ -55,12 +48,65 @@ export function Header() {
         await logout();
     }
 
+    function handleSearch(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        const query = searchQuery.trim();
+
+        if (query) {
+            setMobileOpen(false);
+            router.push(`/products?q=${encodeURIComponent(query)}`);
+        }
+    }
+
+    const searchForm = (
+        <form
+            role="search"
+            onSubmit={handleSearch}
+            className="flex w-full items-center gap-2"
+        >
+            <label htmlFor="header-search" className="sr-only">
+                {t("header.searchPlaceholder")}
+            </label>
+
+            <div className="relative flex-1">
+                <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-subtle"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+                </svg>
+
+                <input
+                    id="header-search"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={t("header.searchPlaceholder")}
+                    className="w-full rounded-full border border-border bg-surface py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none"
+                />
+            </div>
+
+            <button
+                type="submit"
+                className="hidden rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover sm:inline-flex"
+            >
+                {t("header.searchButton")}
+            </button>
+        </form>
+    );
+
     return (
         <header className="sticky top-0 z-50 border-b border-border bg-header-bg backdrop-blur">
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6 lg:px-8">
                 <Link
                     href="/"
-                    className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"
+                    className="flex shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-foreground"
                     aria-label="Ahicadde ana sayfa"
                 >
                     <span
@@ -70,30 +116,9 @@ export function Header() {
                     Ahicadde
                 </Link>
 
-                <nav
-                    aria-label={t("header.navigation")}
-                    className="hidden items-center gap-1 md:flex"
-                >
-                    {NAVIGATION.map((item) => {
-                        const active =
-                            pathname === item.href ||
-                            pathname.startsWith(`${item.href}/`);
-
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                                    active
-                                        ? "bg-primary-soft text-primary-soft-foreground"
-                                        : "text-foreground-muted hover:bg-surface-2 hover:text-foreground"
-                                }`}
-                            >
-                                {t(item.key)}
-                            </Link>
-                        );
-                    })}
-                </nav>
+                <div className="hidden max-w-xl flex-1 md:block">
+                    {searchForm}
+                </div>
 
                 <div className="flex items-center gap-1.5">
                     {/* Dil: TR/EN */}
@@ -209,18 +234,9 @@ export function Header() {
 
             {mobileOpen && (
                 <div className="border-t border-border bg-surface px-6 py-4 md:hidden">
-                    <nav aria-label={t("header.navigation")} className="flex flex-col gap-1">
-                        {NAVIGATION.map((item) => (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={closeMobileMenu}
-                                className="rounded-xl px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
-                            >
-                                {t(item.key)}
-                            </Link>
-                        ))}
+                    <div className="pb-3">{searchForm}</div>
 
+                    <nav aria-label={t("header.navigation")} className="flex flex-col gap-1">
                         <div className="my-2 h-px bg-border" />
 
                         {!loading && !isAuthenticated && (

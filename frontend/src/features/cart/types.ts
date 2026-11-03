@@ -4,6 +4,7 @@ export interface CartProduct {
     slug: string;
     price: string;
     stock: number;
+    is_sample: boolean;
     image_url: string | null;
 }
 

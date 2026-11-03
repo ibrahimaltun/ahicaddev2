@@ -9,6 +9,7 @@ class CartProductResponse(BaseModel):
     slug: str
     price: Decimal
     stock: int
+    is_sample: bool = False
     image_url: str | None = None
 
     model_config = ConfigDict(

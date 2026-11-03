@@ -262,6 +262,12 @@ export default function CheckoutPage() {
                         </div>
                     </section>
 
+                    {items.some((item) => item.product.is_sample) && (
+                        <Notice tone="warning" role="note">
+                            ⚠ {t("checkout.sampleWarning")}
+                        </Notice>
+                    )}
+
                     <section className="rounded-2xl border border-border bg-surface p-6">
                         <h2 className="text-lg font-semibold">
                             {t("checkout.paymentTitle")}

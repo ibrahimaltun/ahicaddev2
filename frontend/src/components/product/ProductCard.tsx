@@ -7,6 +7,7 @@ interface ProductCardProps {
     viewDetailsText: string;
     outOfStockText: string;
     noImageText: string;
+    sampleBadgeText?: string;
 }
 
 export function ProductCard({
@@ -14,6 +15,7 @@ export function ProductCard({
     viewDetailsText,
     outOfStockText,
     noImageText,
+    sampleBadgeText,
 }: ProductCardProps) {
     const image = product.images[0]?.image_url;
 
@@ -22,7 +24,7 @@ export function ProductCard({
             href={`/products/${product.slug}`}
             className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition hover:border-primary hover:shadow-md"
         >
-            <div className="aspect-square overflow-hidden bg-surface-2">
+            <div className="relative aspect-square overflow-hidden bg-surface-2">
                 {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -35,6 +37,12 @@ export function ProductCard({
                     <div className="flex h-full items-center justify-center text-sm text-foreground-subtle">
                         {noImageText}
                     </div>
+                )}
+
+                {product.is_sample && sampleBadgeText && (
+                    <span className="absolute left-3 top-3 rounded-full border border-warning-border bg-warning-bg px-2.5 py-1 text-xs font-semibold text-warning-fg">
+                        {sampleBadgeText}
+                    </span>
                 )}
             </div>
 
