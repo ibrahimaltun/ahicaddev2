@@ -208,3 +208,45 @@ The purchase funnel (previously: cart UI only, no checkout, no `Order` model, no
 | `npx eslint src` | ✅ 0 errors (4 `<img>` warnings, consistent with existing pages) |
 | `next start` :3100 + proxied funnel (login → cart → checkout → stock → history through `/api/*`) + `/checkout`, `/orders` pages | ✅ all correct |
 
+## 8. Addendum — Design System, Dark Mode, TR/EN, Seller Apps, Admin Panel, Online Catalog (2026-11-03)
+
+### 8.1 Design system + dark/night theme
+- **`globals.css`** — full token system (`:root` + `.dark`): `background/surface/surface-2/surface-3`, `foreground`+`muted`+`subtle`, `border(-strong)`, **terracotta brand `primary`/`primary-hover`/`primary-soft`**, `success|danger|warning|info` fg/bg/border triplets, `header-bg`, `footer-*`. Exposed to Tailwind v4 via `@theme inline` (`bg-surface`, `text-foreground-muted`, …) plus `@custom-variant dark`. Every color pair is chosen to pass AA contrast (e.g. primary `#9a3412`+white in light, `#c2410c`+white in dark — no more white-on-light-gray disabled buttons).
+- **`components/ui/`** — reusable primitives: `button.tsx` (`Button` + `buttonClasses()`; variants primary/secondary/soft/ghost/danger/danger-outline/success × sizes sm/md/lg, guaranteed AA text pairs), `form.tsx` (`Label/Input/Select/Textarea/Field`), `badge.tsx` (`Badge` 6 tones), `notice.tsx` (`Notice` success/error/info/warning). All pages now consume these instead of ad-hoc neutral-* classes.
+- **`features/theme/ThemeProvider.tsx` (new)** + inline `<head>` script in `layout.tsx` — cookie `ahicadde-theme` + localStorage + `prefers-color-scheme`, applied **before hydration** (no FOUC); sun/moon toggle in the header. `useI18n`-style `useTheme()` hook.
+- **Header** redesigned: brand mark, tokenized nav with active state, TR/EN toggle, theme toggle, primary cart button with readable badge, mobile menu; **Footer** tokenized.
+
+### 8.2 TR/EN translation (all pages)
+- **`lib/i18n/dictionary.ts`** — single source: `tr` (source of truth, `as const`) + `en` typed as `Dictionary` (a widened structural type), so a missing/extra key in either language fails `tsc` (key-parity guarantee). `TranslationKey` is the flattened key union; `t("key", {vars})` supports `{var}` interpolation.
+- **`features/i18n/LocaleProvider.tsx`** (client) + **`lib/i18n/server.ts`** (`getServerLocale()`/`getServerI18n()` reading cookie `ahicadde-locale`). Cookie is 1 year; toggling sets `document.lang`, swaps the dictionary client-side and `router.refresh()`es server pages.
+- Translated: home, products, product detail, categories, cart, checkout, orders list/detail, login, register, account, seller pages (`/satici-ol`, `/satici-ol/basvuru`, `/saticilar`), static pages (Ahilik, Dayanışmacı Pazar Yeri, Hizmet Ücretleri), header, footer, admin panel. Date formatting uses the active locale.
+
+### 8.3 Seller applications — full detail
+- **Backend:** `SellerApplication` gains `admin_note` (text) + `decided_at` (timestamptz) — migration `e6f7a8b9c0d1`; approve/reject accept an optional `{"admin_note": "..."}` body, stamp `decided_at`, and the note is visible to the applicant via `GET /seller-applications/mine`. `email` in `SellerApplicationCreate` is now optional (server always binds the application to the account email). Rejected applications can re-apply (only one *pending* per user).
+- **Frontend:** `/satici-ol/basvuru` rewritten as a detailed 3-section form (contact / business / products) with type-conditional business-name requirement, tax-number hints, product-count ranges, KVKK checkbox, honeypot, account-email display; **status view** (pending/approved) + rejection notice with admin note + re-apply; `/account` shows the applicant's status card with note.
+
+### 8.4 Ultra-detailed admin panel (`/admin`)
+- **New backend `app/api/v1/admin.py`** (all admin-guarded): `GET /admin/stats` (users/products/active/categories/orders/orders-by-status/revenue-excluding-cancellations/applications-by-status), `GET|PATCH /admin/users` (search, role change, activate/deactivate; **self-demotion/deactivation → 409**), `GET /admin/products` (inactive included, search, category filter), `PATCH|DELETE /admin/products/{id}` (edit name/price/stock/active/category; delete removes cart items first), `GET /admin/orders` (all users, status filter, items, `user_email`), **`POST /admin/catalog/import`**.
+- **Frontend `/admin`** — 5 tabs: **Overview** (stat cards + status distributions), **Seller Applications** (filters, full detail, optional admin note, approve/reject), **Products** (search, inline stock/price editing, activate/deactivate, delete, catalog import), **Orders** (status filters, status transition select+update), **Users** (search, make/remove admin, activate/deactivate). Order `user` relationship added to the `Order` model for `user_email`.
+
+### 8.5 Main page with products from an online API
+- **`app/services/external_catalog.py`** — fetches **DummyJSON** (`dummyjson.com/products`, stdlib-free httpx, 15s timeout, `ExternalCatalogError`), slugifies, converts USD→TRY at a fixed documented rate (×47), guarantees stock ≥ 5, normalizes thumbnails.
+- **`POST /api/v1/admin/catalog/import`** — admin-only, idempotent (skips existing slugs), creates categories + products + primary product images; returns created/skipped counts. Failures → 502. One click in the admin Products tab fills the storefront while there are no real sellers yet.
+- **Home page** rewritten: hero + **"Öne Çıkan Ürünler" grid rendered server-side from the DB catalog** (imported from the online API), category strip, value sections; fetches with `revalidate: 0` so newly imported products appear immediately.
+
+### 8.6 Validation (this round)
+
+| Check | Result |
+|---|---|
+| `pytest` (backend) | ✅ 79 passed (65 prior + 14 new admin/catalog/seller-note tests) |
+| `alembic upgrade head` incl. new `e6f7a8b9c0d1` (Postgres 17) | ✅ clean |
+| Live funnel: register/login → DB-promoted admin → **DummyJSON import (12 real products, 3 categories, images)** → home renders product grid → cart → checkout → admin `processing` → customer cancel → stock restored → seller application → admin approve **with note** → `mine` shows note | ✅ all correct |
+| TR/EN: cookie `ahicadde-locale=en` → server pages render English ("Featured Products"); toggle in header | ✅ |
+| Dark theme: inline pre-hydration script + cookie + toggle | ✅ |
+| Guards: admin 401/403 on all `/admin/*`, self-demote 409, import 502 on upstream failure | ✅ (unit) |
+| `npx tsc --noEmit` | ✅ 0 errors (dictionary TR/EN parity enforced) |
+| `npx eslint src` | ✅ 0 problems (errors **and** warnings) |
+| `npx next build` | ✅ 21 routes |
+| Env note | host Postgres still owns :5432 and rejects `.env` creds → smoke ran on throwaway container at :5433, removed afterwards |
+
+
