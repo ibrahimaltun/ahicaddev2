@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core import rate_limit as rate_limit_module
 from app.db import session as db_session
 from app.db.session import Base
 from app.models import User
@@ -50,6 +51,14 @@ def clean_database():
     Base.metadata.create_all(_test_engine)
     yield
     Base.metadata.drop_all(_test_engine)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Her testte bellek-ici limiteri sifirlar; limitler testleri carpmasin."""
+    rate_limit_module.limiter.reset()
+    yield
+    rate_limit_module.limiter.reset()
 
 
 def register(client, email, password="S3curePass!123", **overrides):
