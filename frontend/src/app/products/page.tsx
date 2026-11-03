@@ -4,10 +4,21 @@ import { getProducts } from "@/features/products/api";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductsPage() {
+interface ProductsPageProps {
+    searchParams: Promise<{
+        category?: string;
+    }>;
+}
+
+export default async function ProductsPage({
+    searchParams,
+}: ProductsPageProps) {
+    const { category } = await searchParams;
+
     const products = await getProducts({
         page: 1,
         limit: 20,
+        category,
     });
 
     return (
@@ -18,12 +29,23 @@ export default async function ProductsPage() {
                 </p>
 
                 <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                    All Products
+                    {category
+                        ? "Category Products"
+                        : "All Products"}
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-neutral-600">
                     Discover products from Ahicadde sellers.
                 </p>
+
+                {category && (
+                    <Link
+                        href="/products"
+                        className="mt-4 inline-flex rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                    >
+                        Kategori filtresini temizle
+                    </Link>
+                )}
             </div>
 
             {products.length === 0 ? (

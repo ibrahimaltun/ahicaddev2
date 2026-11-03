@@ -7,6 +7,7 @@ const API_BASE_URL =
 export interface ProductListParams {
     page?: number;
     limit?: number;
+    category?: string;
 }
 
 export async function getProducts(
@@ -20,6 +21,10 @@ export async function getProducts(
 
     if (params.limit !== undefined) {
         searchParams.set("limit", String(params.limit));
+    }
+
+    if (params.category !== undefined) {
+        searchParams.set("category", params.category);
     }
 
     const query = searchParams.toString();
