@@ -1,9 +1,11 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.db.session import engine
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.cart import router as cart_router
 from app.api.v1.categories import router as categories_router
 from app.api.v1.products import router as products_router
 from app.api.v1.seller_applications import router as seller_applications_router
@@ -15,6 +17,11 @@ app = FastAPI(
 
 app.include_router(
     auth_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    cart_router,
     prefix="/api/v1",
 )
 
@@ -51,9 +58,17 @@ async def health():
 
 @app.get("/health/db")
 async def database_health():
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT 1"))
-        value = result.scalar()
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(text("SELECT 1"))
+            value = result.scalar()
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "database": "unavailable",
+            },
+        )
 
     return {
         "database": "connected",

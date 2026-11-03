@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CartProductResponse(BaseModel):
@@ -16,11 +16,11 @@ class CartProductResponse(BaseModel):
 
 class CartItemCreate(BaseModel):
     product_id: int
-    quantity: int = 1
+    quantity: int = Field(default=1, ge=1)
 
 
 class CartItemUpdate(BaseModel):
-    quantity: int
+    quantity: int = Field(ge=1)
 
 
 class CartItemResponse(BaseModel):
