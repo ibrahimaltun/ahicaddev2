@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import jwt
 from pwdlib import PasswordHash
 
@@ -15,9 +17,13 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(user_id: int, role: str) -> str:
+    now = datetime.now(timezone.utc)
+
     payload = {
         "sub": str(user_id),
         "role": role,
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
     }
 
     return jwt.encode(

@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.api.v1.auth import require_admin
+from app.db.session import get_db
 from app.models import Category
 from app.schemas.category import CategoryCreate, CategoryResponse
 
@@ -10,15 +12,6 @@ router = APIRouter(
     prefix="/categories",
     tags=["Categories"],
 )
-
-
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post(
@@ -29,6 +22,7 @@ def get_db():
 def create_category(
     category_data: CategoryCreate,
     db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     category = Category(
         name=category_data.name,
@@ -36,7 +30,17 @@ def create_category(
     )
 
     db.add(category)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bu slug ile bir kategori zaten var",
+        )
+
     db.refresh(category)
 
     return category

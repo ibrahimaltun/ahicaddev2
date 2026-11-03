@@ -33,9 +33,10 @@ class ProductResponse(BaseModel):
     stock: int
     is_active: bool
     category_id: int | None
+    brand_id: int | None
+    images: list[ProductImageResponse]
 
     model_config = ConfigDict(
         from_attributes=True,
     )
-    brand_id: int | None
-    images: list[ProductImageResponse]
+

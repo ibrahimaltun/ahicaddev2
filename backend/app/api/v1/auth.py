@@ -1,15 +1,15 @@
-from typing import Callable
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import (
     create_access_token,
     decode_access_token,
     hash_password,
     verify_password,
 )
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.models import User
 from app.schemas.auth import (
     LoginRequest,
@@ -21,15 +21,6 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
-
-
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post(
@@ -104,7 +95,7 @@ def login(
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=60 * 30,
+        max_age=settings.access_token_expire_minutes * 60,
     )
 
     return {
