@@ -1,0 +1,166 @@
+# Ahicadde — Fix Report
+
+**Date:** 2026-11-03
+**Scope:** Full-repo defect scan and fix across the FastAPI backend, Next.js frontend, Alembic migrations, Docker/Compose/Jenkins infrastructure.
+
+---
+
+## 1. Executive Summary
+
+The repository was reviewed end-to-end (backend API/models/schemas/migrations, frontend pages/feature modules/API clients, infra configs). **21 defects** were found and fixed, including two blockers that made the project unbuildable/unrunnable in its committed state:
+
+| # | Severity | Area | Problem |
+|---|----------|------|---------|
+| 1 | 🔴 Critical | Backend | Cart API router completely empty (no endpoints) |
+| 2 | 🔴 Critical | Database | No Alembic migration created `carts` / `cart_items` tables |
+| 3 | 🔴 Critical | Database | `seller_applications.user_id` never actually migrated (empty migration → schema drift caught by `alembic check`) |
+| 4 | 🔴 Critical | Frontend | `SubmitEvent` is not a React export → TypeScript build failed |
+| 5 | 🔴 Critical | Frontend | No `/api/*` rewrite → all client-side API calls 404 in dev |
+| 6 | 🟠 High | Backend | JWTs had no `exp` claim — tokens never expired |
+| 7 | 🟠 High | Backend | Anyone (anonymous) could create products/categories |
+| 8 | 🟠 High | Backend | `Settings` crashed on boot when `.env` contained compose-only variables |
+| 9 | 🟠 High | Frontend | Dead links `/urunler`, `/kategoriler` (404) in header, home page, sitemap |
+| 10 | 🟠 High | Frontend | `bg-neutral-750` — a color that does not exist in Tailwind → invisible buttons |
+| 11 | 🟠 High | Frontend | Admin panel was a stub while seller-approval backend APIs sat unused |
+| 12 | 🟡 Medium | Backend | Duplicate `get_db` definitions in 4 API files |
+| 13 | 🟡 Medium | Backend | Duplicate slug / bad category/brand FK caused raw 500s instead of 4xx |
+| 14 | 🟡 Medium | Backend | Cart quantity schemas allowed `quantity < 1` |
+| 15 | 🟡 Medium | Backend | No test suite although `pytest` was in requirements |
+| 16 | 🟡 Medium | Frontend | Invisible links (`class="hidden"` on login/home links in account + admin pages) |
+| 17 | 🟡 Medium | Frontend | `robots.txt` disallowed fictional routes; sitemap referenced dead routes |
+| 18 | 🟡 Medium | Repo | `cookies.txt` with a live JWT session committed to git |
+| 19 | 🟡 Medium | Repo | Duplicate stale API client `frontend/lib/api.ts` |
+| 20 | 🟢 Low | Repo | `Makefile` referenced non-existent `.env.local` and non-existent compose services |
+| 21 | 🟢 Low | Repo | `.env` `DATABASE_URL` pointed at docker hostname `postgres`, breaking host-run dev backends |
+
+---
+
+## 2. Backend Fixes (`backend/`)
+
+### 2.1 Cart API implemented (`app/api/v1/cart.py`) — was empty
+The models (`Cart`, `CartItem`) and schemas existed, but the router had **zero endpoints** and wasn't even registered in `main.py`. Implemented, following the existing code style:
+
+- `GET /api/v1/cart` — returns (or lazily creates) the user's cart with items + product info.
+- `POST /api/v1/cart/items` — validates the product exists and is active, **merges duplicate lines**, and enforces **stock limits (409)**.
+- `PATCH /api/v1/cart/items/{item_id}` — updates quantity with stock validation; items of other users return **404**.
+- `DELETE /api/v1/cart/items/{item_id}` — removes a line (204).
+
+Registered in `app/main.py` (it had never been included).
+
+### 2.2 Alembic migrations — schema drift fixed
+- **New migration `b7c8d9e0f1a2`** creates `carts` (with unique `user_id` FK → `users`, ON DELETE CASCADE) and `cart_items` (FKs to `carts`/`products`, ON DELETE CASCADE, indexed) — matching the SQLAlchemy models exactly.
+- **New migration `c0e1f2a3b4d5`** adds the missing `seller_applications.user_id` column + FK + index. The old `a1b2c3d4e5f6` revision ("add user_id…") never actually added it; `alembic check` exposed the drift. Since the FK requires the `users` table (created on the *other* branch of the migration fork), the fix is chained after the merge revision `1677736a612d`.
+- **Verified:** fresh `alembic upgrade head` on real PostgreSQL 17, downgrade → re-upgrade round-trip, and `alembic check` → *"No new upgrade operations detected."*
+
+### 2.3 JWT expiry (`app/core/security.py`, `app/api/v1/auth.py`)
+- Tokens now embed `iat` and `exp` using `settings.access_token_expire_minutes`; PyJWT rejects expired tokens (401).
+- Login cookie `max_age` now derives from the same setting (was a hardcoded `60*30`).
+- Verified over HTTP: `exp - iat == 1800` for 30-minute setting; expired tokens are rejected by tests.
+
+### 2.4 Authorization hardened
+- `POST /api/v1/products` and `POST /api/v1/categories` now require `Depends(require_admin)`. Anonymous → 401, non-admin → 403 (was: anyone could create catalog content).
+
+### 2.5 Settings boot crash fixed (`app/core/config.py`)
+`Settings` used pydantic-settings defaults (extra = forbid) and crashed with `ValidationError` because the repo-root `.env` contains compose-only keys (`POSTGRES_PASSWORD`, …). Added `extra="ignore"`.
+
+### 2.6 Integrity handling & cleanup
+- Duplicate category/product slugs → **409** with a Turkish message (was raw 500 via `IntegrityError`).
+- Unknown `category_id` / `brand_id` on product creation → **400** (was raw FK 500).
+- Duplicated `get_db` definitions removed from `auth.py`, `cart.py`, `categories.py`, `products.py` — all import the single one from `app/db/session.py`.
+- `GET /api/v1/products` gained an optional `?category=<slug>` filter (used by the new categories page).
+- `/health/db` now returns **503 JSON** instead of an unhandled 500 when the database is unreachable.
+- `ProductResponse` schema: misplaced field declarations (`brand_id`, `images` after `model_config`) reordered.
+- Cart schemas: `quantity` constrained with `Field(ge=1)` for both create and update.
+
+### 2.7 Test suite added (`backend/tests/`, `backend/pytest.ini`)
+51 integration tests (FastAPI `TestClient` + isolated in-memory SQLite, FK pragmas enabled) covering:
+
+- health endpoints, registration/login/logout/duplicate email/short password/expired tokens,
+- admin-protected category & product CRUD, slug conflicts, category filtering, inactive-product hiding,
+- the full cart flow (auth, create-on-first-use, merge, stock 409, ownership 404, non-positive quantity 422),
+- the full seller-application flow (auth, honeypot → `id=0`, pending-duplicate 409, KVKK consent, admin list/filter, approve/reject, non-pending 409).
+
+**Result: 51 passed.**
+
+---
+
+## 3. Frontend Fixes (`frontend/`)
+
+### 3.1 Build blocker: `SubmitEvent` (`login/page.tsx`, `register/page.tsx`)
+`import type { SubmitEvent } from "react"` — this type does not exist in React (it's a DOM interface). Replaced with `FormEvent<HTMLFormElement>`. This alone made `tsc`/`next build` fail; build now passes.
+
+### 3.2 Dev-mode API proxy (`next.config.ts`)
+Client-side calls go to `/api/v1/*` (same origin), but Next.js had no rewrite, so every browser API call 404'd in dev. Added `rewrites()` mirroring the production Caddy/nginx contract exactly: `/api/:path*` → `<backend origin>/api/:path*` (path unchanged; default origin `http://localhost:8000`, override with `API_PROXY_ORIGIN`). Verified live: `/api/v1/products` through the Next server returns backend JSON.
+
+### 3.3 Dead links & missing pages
+- `/urunler` → `/products` (header nav, home page, sitemap). Old route correctly 404s now.
+- Created **`/kategoriler`** page (the header already linked to it): server component listing categories from `GET /api/v1/categories`, linking to filtered products.
+- New `src/features/categories/` module (types + server-side API client) following the existing `products` feature pattern.
+- `GET /api/v1/products?category=<slug>` support in `features/products/api.ts` + `searchParams` handling (Next 16 async `searchParams`) in the products page, with a filter-reset link.
+
+### 3.4 Invalid Tailwind color `neutral-750` (3 files)
+Tailwind's neutral palette has no `750`, so those buttons rendered **without any background** (white text on white page). Replaced with `bg-neutral-950` (+ correct hover states) in:
+- `components/layout/header.tsx` (cart button),
+- `app/cart/page.tsx` ("Alışverişe Devam Et"),
+- `app/satici-ol/page.tsx` (also removed a conflicting `text-white text-neutral-700` pair).
+
+Also fixed the home page's "Ürünleri Keşfet" button, which was `text-white` on a white background (invisible) and used `<a>` instead of `next/link`.
+
+### 3.5 Admin panel: seller application review (uses previously-dead backend APIs)
+`app/admin/page.tsx` was a stub ("Hoş geldiniz" + nothing) and had an invisible return link. It now:
+- lists seller applications via `GET /api/v1/seller-applications/admin` with **pending/approved/rejected filter tabs**,
+- shows full application details (business/individual type, tax category, product description, counts, contact),
+- provides **Onayla / Reddet** actions wired to the approve/reject PATCH endpoints, with per-row busy state and error banners,
+- keeps the existing `useAuth` admin gate (renders an "unauthorized" card with a visible home link otherwise).
+
+New `src/features/seller-applications/` module (types + client API matching `SellerApplicationAdminOut`).
+
+### 3.6 Invisible links fixed
+`account/page.tsx` and `admin/page.tsx` used `className="hidden …"` on their login/home links — permanently invisible. Replaced with visible, styled links.
+
+### 3.7 SEO route fixes
+- `sitemap.ts`: `/urunler` → `/products`.
+- `robots.ts`: disallowed fictional routes (`/hesabim/`, `/sepet/`, `/giris/`, `/kayit/`) replaced with the real ones (`/admin/`, `/account/`, `/cart/`, `/login`, `/register`, `/checkout/`).
+
+### 3.8 Stale duplicate API client removed
+`frontend/lib/api.ts` duplicated `src/lib/api/client.ts` (with a diverging error message) and was imported by nothing. Deleted (feature modules all use `@/lib/api/client`).
+
+### 3.9 Lint quality
+`eslint src` now reports **0 errors** (was 8): fixed the `react-hooks/set-state-in-effect` violations in the new admin effect and pre-existing `AuthProvider` (async-boundary pattern with cancellation), and escaped raw apostrophes (`&apos;`) in 5 pages (`ahilik`, `hizmet-ucretleri`, `home`, `register`, `saticilar`). Remaining: 3 pre-existing `<img>` **warnings** (non-failing; intentional for arbitrary remote product image URLs).
+
+---
+
+## 4. Repository / Infra Fixes
+
+- **`cookies.txt` deleted** — it contained a live JWT session (credential leak in git). Added to `.gitignore` along with `.pytest_cache/`.
+- **`Makefile`** — pointed at non-existent `.env.local`; commands also referenced `backend`/`frontend` services that don't exist in the dev `compose.yaml` (which is postgres+redis only). Now uses `.env` and valid commands. (`docker compose config` passes.)
+- **`.env`** — `DATABASE_URL` changed from `@postgres:5432` (docker-internal hostname, breaks host-run backend) to `@localhost:5432`.
+- **`compose.prod.yaml`** — validated with `docker compose config` (temporary throwaway `.env.prod`; not committed).
+- **Jenkinsfile** — reviewed; pipeline stages (checkout → validate env → validate compose → build → `alembic upgrade head` → deploy → health check) are coherent with the fixed backend (backend image ships alembic, `app.main:app` boot verified).
+
+---
+
+## 5. Validation Performed
+
+| Check | Result |
+|---|---|
+| `pytest` (backend, 51 tests) | ✅ 51 passed |
+| `alembic upgrade head` (fresh PostgreSQL 17) | ✅ all revisions apply |
+| `alembic downgrade -1` → `upgrade head` | ✅ round-trip OK |
+| `alembic check` (model ↔ DB drift) | ✅ "No new upgrade operations detected" |
+| `uvicorn app.main:app` boot against real PostgreSQL | ✅ healthy, `/health/db` connected |
+| Live HTTP smoke test (register → promote → login → category → product → cart add/update/delete → seller application approve/reject, status codes incl. 401/403/409/204) | ✅ all correct |
+| `npx tsc --noEmit` | ✅ 0 errors |
+| `npm run build` (Next.js 16.3.5) | ✅ all 17 routes compile |
+| `npx eslint src` | ✅ 0 errors (3 pre-existing img warnings) |
+| `next start` + `curl /api/v1/*` proxy & SSR pages (`/`, `/kategoriler`, `/products`) | ✅ 200s, real backend data rendered |
+| `docker compose -f compose.yaml config` / `compose.prod.yaml config` | ✅ valid |
+
+---
+
+## 6. Remaining Recommendations (not changed, by design)
+
+1. **Frontend cart is still localStorage-based** (`features/cart/store.ts`). The backend cart API implemented in this round is contract-ready; migrating the storefront to server-side carts (sync on login, merge guest cart) is a product decision and was deliberately left as the next feature step.
+2. `.env` with dev-only secrets is still tracked in git. For production, rotate `JWT_SECRET`/`POSTGRES_PASSWORD` and untrack the file (`git rm --cached .env`).
+3. Product images use plain `<img>` (3 lint warnings). Switching to `next/image` requires a configured remote loader for seller-supplied URLs.
+4. The frontend `AddToCartButton` is not yet used inside `products/[slug]` — wiring it up is a natural follow-up once server-side carts land.

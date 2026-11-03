@@ -10,6 +10,10 @@ ecom-env/
 .env.local
 .env.*
 .env.prod
+cookies.txt
+
+# Tests
+.pytest_cache/
 
 # Node
 node_modules/

@@ -1,11 +1,11 @@
 upLocal:
-	docker compose -f compose.yaml --env-file .env.local up -d --build
+	docker compose -f compose.yaml --env-file .env up -d
 
 downLocal:
-	docker compose -f compose.yaml --env-file .env.local down
+	docker compose -f compose.yaml --env-file .env down
 
 logs:
-	docker compose -f compose.yaml --env-file .env.local logs -f backend frontend
+	docker compose -f compose.yaml --env-file .env logs -f
 
 contPs:
 	docker compose -f compose.yaml --env-file .env.local ps
