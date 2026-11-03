@@ -240,6 +240,47 @@ export const tr = {
         registerError: "Kayıt sırasında bir hata oluştu.",
         haveAccount: "Zaten hesabınız var mı?",
         loginLink: "Giriş yapın",
+        forgotPasswordLink: "Şifremi unuttum?",
+        forgotPasswordTitle: "Şifremi Unuttum",
+        forgotPasswordDescription:
+            "Kayıtlı e-posta adresinizi girin; şifre sıfırlama bağlantısını size gönderelim.",
+        forgotPasswordButton: "Sıfırlama Bağlantısı Gönder",
+        forgotPasswordSending: "Gönderiliyor...",
+        forgotPasswordSent:
+            "E-postanızı kontrol edin. Hesabınız varsa şifre sıfırlama bağlantısı gönderildi. Bağlantı 60 dakika geçerlidir.",
+        forgotPasswordError:
+            "Sıfırlama bağlantısı gönderilemedi. Lütfen tekrar deneyin.",
+        forgotPasswordBackToLogin: "Giriş sayfasına dön",
+        resetTitle: "Yeni Şifre Belirle",
+        resetDescription:
+            "Şifrenizi sıfırlamak için aşağıya yeni şifrenizi girin.",
+        newPassword: "Yeni şifre",
+        confirmPassword: "Yeni şifre (tekrar)",
+        passwordMismatch: "Şifreler eşleşmiyor. Lütfen kontrol edin.",
+        resetButton: "Şifreyi Güncelle",
+        resetting: "Güncelleniyor...",
+        resetSuccess:
+            "Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.",
+        resetError: "Şifre güncellenemedi.",
+        resetInvalidLink:
+            "Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş. Yeni bir bağlantı talep edin.",
+        resetRequestNew: "Yeni sıfırlama bağlantısı talep et",
+        resetGoToLogin: "Giriş Yap",
+        verifyTitle: "E-posta Doğrulama",
+        verifying: "E-posta adresiniz doğrulanıyor...",
+        verifySuccess:
+            "E-posta adresiniz doğrulandı. Artık tüm özellikleri kullanabilirsiniz.",
+        verifyError:
+            "Doğrulama bağlantısı geçersiz veya süresi dolmuş. Hesabınız sayfasından yeni bir doğrulama e-postası talep edebilirsiniz.",
+        verifyBackToHome: "Ana sayfaya dön",
+        emailVerified: "E-posta doğrulanmış",
+        emailNotVerified: "E-posta doğrulanmamış",
+        resendVerification: "Doğrulama e-postası gönder",
+        resendVerificationSending: "Gönderiliyor...",
+        resendVerificationSent:
+            "Doğrulama e-postası gönderildi. E-postanızı kontrol edin.",
+        resendVerificationError:
+            "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.",
     },
     account: {
         label: "Hesabım",
@@ -726,6 +767,47 @@ export const en: Dictionary = {
         registerError: "An error occurred while signing up.",
         haveAccount: "Already have an account?",
         loginLink: "Log in",
+        forgotPasswordLink: "Forgot your password?",
+        forgotPasswordTitle: "Forgot Password",
+        forgotPasswordDescription:
+            "Enter your registered email address and we will send you a password reset link.",
+        forgotPasswordButton: "Send Reset Link",
+        forgotPasswordSending: "Sending...",
+        forgotPasswordSent:
+            "Check your email. If an account exists, a password reset link has been sent. The link is valid for 60 minutes.",
+        forgotPasswordError:
+            "The reset link could not be sent. Please try again.",
+        forgotPasswordBackToLogin: "Back to login",
+        resetTitle: "Set a New Password",
+        resetDescription:
+            "Enter your new password below to reset it.",
+        newPassword: "New password",
+        confirmPassword: "New password (confirm)",
+        passwordMismatch: "Passwords do not match. Please check them.",
+        resetButton: "Update Password",
+        resetting: "Updating...",
+        resetSuccess:
+            "Your password has been updated. You can now log in with your new password.",
+        resetError: "The password could not be updated.",
+        resetInvalidLink:
+            "The password reset link is invalid or has expired. Request a new one.",
+        resetRequestNew: "Request a new reset link",
+        resetGoToLogin: "Log In",
+        verifyTitle: "Email Verification",
+        verifying: "Verifying your email address...",
+        verifySuccess:
+            "Your email address has been verified. You can now use all features.",
+        verifyError:
+            "The verification link is invalid or has expired. You can request a new verification email from your account page.",
+        verifyBackToHome: "Back to home",
+        emailVerified: "Email verified",
+        emailNotVerified: "Email not verified",
+        resendVerification: "Send verification email",
+        resendVerificationSending: "Sending...",
+        resendVerificationSent:
+            "Verification email sent. Please check your inbox.",
+        resendVerificationError:
+            "The verification email could not be sent. Please try again.",
     },
     account: {
         label: "My Account",

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useI18n } from "@/features/i18n/LocaleProvider";
+import { sendVerificationEmail } from "@/features/auth/api";
 import { getMySellerApplications } from "@/features/seller-applications/api";
 import type { SellerApplication } from "@/features/seller-applications/types";
 
@@ -21,6 +23,28 @@ export default function AccountPage() {
     const [application, setApplication] = useState<SellerApplication | null>(
         null,
     );
+
+    const [verificationSent, setVerificationSent] = useState(false);
+    const [verificationSending, setVerificationSending] = useState(false);
+    const [verificationError, setVerificationError] = useState("");
+
+    async function handleResendVerification() {
+        setVerificationError("");
+        setVerificationSending(true);
+
+        try {
+            await sendVerificationEmail();
+            setVerificationSent(true);
+        } catch (sendError) {
+            setVerificationError(
+                sendError instanceof Error
+                    ? sendError.message
+                    : t("auth.resendVerificationError"),
+            );
+        } finally {
+            setVerificationSending(false);
+        }
+    }
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -87,6 +111,48 @@ export default function AccountPage() {
                 <h1 className="mt-2 text-4xl font-semibold tracking-tight">
                     {t("account.welcome", { name: user.first_name })}
                 </h1>
+
+                <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-foreground-muted">
+                            {t("auth.email")}
+                        </span>
+
+                        <Badge tone={user.is_verified ? "success" : "warning"}>
+                            {user.is_verified
+                                ? t("auth.emailVerified")
+                                : t("auth.emailNotVerified")}
+                        </Badge>
+                    </div>
+
+                    {!user.is_verified ? (
+                        <div className="mt-4">
+                            {verificationSent ? (
+                                <Notice tone="success">
+                                    {t("auth.resendVerificationSent")}
+                                </Notice>
+                            ) : null}
+
+                            {verificationError ? (
+                                <Notice tone="error">
+                                    {verificationError}
+                                </Notice>
+                            ) : null}
+
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                disabled={verificationSending || verificationSent}
+                                onClick={handleResendVerification}
+                            >
+                                {verificationSending
+                                    ? t("auth.resendVerificationSending")
+                                    : t("auth.resendVerification")}
+                            </Button>
+                        </div>
+                    ) : null}
+                </div>
 
                 <div className="mt-10 grid gap-4 sm:grid-cols-2">
                     <Link

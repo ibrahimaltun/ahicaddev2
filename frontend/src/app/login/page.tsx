@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,15 @@ export default function LoginPage() {
                                 }
                             />
                         </Field>
+
+                        <div className="text-right">
+                            <Link
+                                href="/sifremi-unuttum"
+                                className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+                            >
+                                {t("auth.forgotPasswordLink")}
+                            </Link>
+                        </div>
 
                         {success && (
                             <Notice tone="success" role="status">
