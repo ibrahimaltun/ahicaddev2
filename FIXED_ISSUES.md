@@ -250,3 +250,58 @@ The purchase funnel (previously: cart UI only, no checkout, no `Order` model, no
 | Env note | host Postgres still owns :5432 and rejects `.env` creds → smoke ran on throwaway container at :5433, removed afterwards |
 
 
+## 9. Addendum — Auth Hardening: E-posta Doğrulama, Şifre Sıfırlama, Rate-Limit (2026-11-03)
+
+Backlog'daki "kimlik doğrulama eksikleri" maddesi tamamlandı. Backend'e e-posta
+doğrulama akışı, şifre sıfırlama akışı ve bellek-içi rate-limit altyapısı eklendi;
+frontend'e üç yeni sayfa + hesabım doğrulama kartı geldi.
+
+### Backend
+- `app/core/rate_limit.py` (yeni): kayan-pencere (sliding window) bellek-içi limiter.
+  `rate_limit(scope=..., limit=..., window_seconds=...)` dependency factory; 429 yanıtı
+  `Retry-After` header'ı ile döner. Çoklu-proses/Redis gerektiğinde tek değişim noktası `limiter` nesnesi.
+  - Login: IP başına 10/dk **+** e-posta başına 5/dk (başarılı+başarısız hepsi sayılır)
+  - Register: IP 5/dk · Forgot-password: IP 5/dk + e-posta 3/dk · Reset: IP 5/dk
+  - Verify-email: IP 10/dk · Send-verification: IP 5/dk
+- `app/services/email.py` (yeni): e-posta servisi. `email_backend=console` (varsayılan)
+  link'i stdout'a yazarak dev/smoke ortamlarında token'ı görünür kılar; `smtp` modunda
+  SMTP ile gönderir (`smtp_host/port/user/password/email_from` ayarları eklendi).
+  `frontend_url` ayarı e-postadaki linkleri kurar (varsayılan `http://localhost:3100`).
+- `app/models/user.py` + migration `f7a8b9c0d1e2`: `users` tablosuna
+  `verification_token`, `verification_token_expires`, `reset_token`, `reset_token_expires`
+  (token'lar DB'de **sha256 özeti** olarak saklanır; ham token yalnızca e-postada dolaşır).
+- `POST /auth/forgot-password`: kullanıcı varlığı **belirtilmez** (enumeration önlemi);
+  her durumda aynı genel yanıt. Aktif kullanıcıya 60 dk geçerli tek kullanımlık link gönderilir.
+- `POST /auth/reset-password`: token özeti + süre kontrolü → şifre güncellenir, token temizlenir.
+- `POST /auth/verify-email` + `POST /auth/send-verification`: kayıtta otomatik doğrulama
+  e-postası; e-posta gönderim hatası kaydı bozmaz (kullanıcı hesabım sayfasından yeniden isteyebilir).
+- **Tasarım kararı:** doğrulanmamış e-posta girişi engellemez (SMTP kurulana kadar demo akışı
+  kırılmaz); `is_verified` durumu `UserResponse` üzerinden görünür, sonraki adımda kapı
+  `require_email_verified` dependency ile zorlanabilir.
+- `tests/test_auth_security.py` (yeni, 17 test): doğrulama (geçerli/tek kullanımlık/geçersiz),
+  şifre sıfırlama (link gönderimi, güncelleme, tek kullanımlık, süresi dolmuş, kısa şifre),
+  rate-limit (login e-posta limiti, register IP limiti, forgot e-posta limiti, reset sonrası
+  başarılı giriş). `conftest.py`'ye her testte limiteri sıfırlayan autouse fixture eklendi.
+
+### Frontend
+- Yeni sayfalar: `/sifremi-unuttum` (form), `/sifre-sifirla?token=` (yeni şifre + tekrar
+  eşleşme kontrolü; token yoksa hata ekranı), `/email-dogrula?token=` (otomatik doğrulama,
+  `cancelled` bayrağı ile).
+- `/login`'e "Şifremi unuttum?" bağlantısı; `/account`'a doğrulama durumu kartı
+  (Badge: doğrulanmış/uyarı + doğrulanmamışsa "Doğrulama e-postası gönder" butonu).
+- `robots.ts`: token barındıran üç sayfa disallow listesine eklendi.
+- Sözlük: `auth.*` bölümüne 28 yeni anahtar (TR/EN parity tsc ile garanti).
+
+### Doğrulama
+| Kontrol | Sonuç |
+|---|---|
+| `pytest tests/` | ✅ 96 passed (79 eski + 17 yeni) |
+| `alembic upgrade head` (5433 Postgres) | ✅ 4 yeni kolon + 2 indeks |
+| Canlı: kayıt → console e-posta → token → `/auth/verify-email` | ✅ 200, `is_verified=t`, token tek kullanımlık (2. deneme 400) |
+| Canlı: forgot → reset → eski şifre 401 / yeni şifre 200 | ✅ |
+| Canlı: 5 yanlış giriş → 429 + `Retry-After` | ✅ |
+| `npx tsc --noEmit` / `npx eslint src` / `npx next build` | ✅ 0 hata / 0 problem / 22 route |
+| Smoke sonrası | uvicorn+next durduruldu, smoke container silindi, /tmp temizlendi |
+
+
+
