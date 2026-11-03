@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { AuthProvider } from "@/features/auth/hooks/AuthProvider";
+import { CartProvider } from "@/features/cart/CartProvider";
 
 import "./globals.css";
 
@@ -85,13 +86,15 @@ export default function RootLayout({
     <html lang="tr" className={geist.variable}>
       <body>
         <AuthProvider>
-          <Header />
+          <CartProvider>
+            <Header />
 
-          <main className="flex-1">
-            {children}
-          </main>
+            <main className="flex-1">
+              {children}
+            </main>
 
-          <Footer />
+            <Footer />
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

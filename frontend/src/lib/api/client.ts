@@ -23,3 +23,25 @@ export async function apiFetch<T>(
 
     return response.json();
 }
+
+export async function apiFetchEmpty(
+    endpoint: string,
+    options: RequestInit = {},
+): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        credentials: "include",
+        headers: {
+            "Content-Type": "application/json",
+            ...options.headers,
+        },
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => null);
+
+        throw new Error(
+            error?.detail || "İşlem sırasında bir hata oluştu.",
+        );
+    }
+}

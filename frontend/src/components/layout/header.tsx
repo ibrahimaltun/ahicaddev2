@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useCartStore } from "@/features/cart/store";
+import { useCart } from "@/features/cart/CartProvider";
 
 const navigation = [
     { href: "/products", label: "Ürünler" },
@@ -21,18 +21,11 @@ export function Header() {
         logout,
     } = useAuth();
 
+    const { totalCount: cartItemCount } = useCart();
+
     async function handleLogout() {
         await logout();
     }
-
-    const cartItemCount = useCartStore(
-        (state) =>
-            state.items.reduce(
-                (total, item) => total + item.quantity,
-                0,
-            ),
-    );
-
 
     return (
         <header className="sticky top-0 z-50 border-b border-neutral-200/80 bg-white/95 backdrop-blur">

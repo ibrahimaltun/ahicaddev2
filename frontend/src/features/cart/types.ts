@@ -1,12 +1,19 @@
-export interface CartItem {
-    productId: number;
+export interface CartProduct {
+    id: number;
     name: string;
     slug: string;
     price: string;
-    quantity: number;
-    imageUrl: string | null;
+    stock: number;
+    image_url: string | null;
 }
 
-export interface CartState {
+export interface CartItem {
+    id: number;
+    quantity: number;
+    product: CartProduct;
+}
+
+export interface Cart {
+    id: number;
     items: CartItem[];
 }

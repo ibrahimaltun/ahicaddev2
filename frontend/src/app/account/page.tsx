@@ -53,7 +53,37 @@ export default function AccountPage() {
                     Hoş geldiniz, {user.first_name}
                 </h1>
 
-                <div className="mt-10 rounded-2xl border border-neutral-200 p-6">
+                <div className="mt-10 grid gap-4 sm:grid-cols-2">
+                    <Link
+                        href="/orders"
+                        className="rounded-2xl border border-neutral-200 p-6 transition hover:border-neutral-400"
+                    >
+                        <span className="font-medium">
+                            Siparişlerim
+                        </span>
+
+                        <span className="mt-2 block text-sm text-neutral-500">
+                            Geçmiş siparişlerinizi ve ödeme
+                            durumlarınızı görüntüleyin.
+                        </span>
+                    </Link>
+
+                    <Link
+                        href="/cart"
+                        className="rounded-2xl border border-neutral-200 p-6 transition hover:border-neutral-400"
+                    >
+                        <span className="font-medium">
+                            Sepetim
+                        </span>
+
+                        <span className="mt-2 block text-sm text-neutral-500">
+                            Sepetinizi gözden geçirin ve
+                            ödeme adımına geçin.
+                        </span>
+                    </Link>
+                </div>
+
+                <div className="mt-8 rounded-2xl border border-neutral-200 p-6">
                     <h2 className="text-lg font-semibold">
                         Hesap Bilgileri
                     </h2>

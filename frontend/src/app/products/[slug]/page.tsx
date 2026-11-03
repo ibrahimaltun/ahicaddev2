@@ -102,12 +102,7 @@ export default async function ProductPage({
 
                     <AddToCartButton
                         productId={product.id}
-                        name={product.name}
-                        slug={product.slug}
-                        price={product.price}
-                        imageUrl={
-                            product.images[0]?.image_url ?? null
-                        }
+                        productName={product.name}
                         disabled={product.stock === 0}
                     />
                 </div>
