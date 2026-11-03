@@ -10,7 +10,8 @@ ProductCountRange = Literal["1-10", "11-50", "51-200", "200+"]
 
 class SellerApplicationCreate(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
-    email: EmailStr
+    # E-posta zorunlu degil: sunucu tarafinda hesap e-postasiyla eslestirilir.
+    email: EmailStr | None = None
     phone: str = Field(min_length=10, max_length=32)
     city: str = Field(min_length=2, max_length=80)
 
@@ -59,6 +60,10 @@ class SellerApplicationCreate(BaseModel):
         return self
 
 
+class SellerApplicationDecision(BaseModel):
+    admin_note: str | None = Field(default=None, max_length=1000)
+
+
 class SellerApplicationOut(BaseModel):
     id: int
     status: str
@@ -81,6 +86,8 @@ class SellerApplicationAdminOut(BaseModel):
     product_description: str
     estimated_product_count: str
     status: Literal["pending", "approved", "rejected"]
+    admin_note: str | None
+    decided_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

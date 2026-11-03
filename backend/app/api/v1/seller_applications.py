@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -11,6 +12,7 @@ from app.models.user import User
 from app.schemas.seller_application import (
     SellerApplicationAdminOut,
     SellerApplicationCreate,
+    SellerApplicationDecision,
     SellerApplicationOut,
 )
 
@@ -106,6 +108,7 @@ def list_seller_applications(
 )
 def approve_seller_application(
     application_id: int,
+    payload: SellerApplicationDecision | None = None,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
@@ -124,6 +127,10 @@ def approve_seller_application(
         )
 
     application.status = "approved"
+    application.admin_note = (
+        payload.admin_note.strip() if payload and payload.admin_note else None
+    )
+    application.decided_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(application)
 
@@ -136,6 +143,7 @@ def approve_seller_application(
 )
 def reject_seller_application(
     application_id: int,
+    payload: SellerApplicationDecision | None = None,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
@@ -154,6 +162,10 @@ def reject_seller_application(
         )
 
     application.status = "rejected"
+    application.admin_note = (
+        payload.admin_note.strip() if payload and payload.admin_note else None
+    )
+    application.decided_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(application)
 

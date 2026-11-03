@@ -9,6 +9,7 @@ from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.models.order_item import OrderItem
+    from app.models.user import User
 
 
 class Order(Base):
@@ -88,3 +89,5 @@ class Order(Base):
         cascade="all, delete-orphan",
         order_by="OrderItem.id",
     )
+
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
