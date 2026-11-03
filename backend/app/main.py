@@ -7,6 +7,7 @@ from app.db.session import engine
 from app.api.v1.auth import router as auth_router
 from app.api.v1.cart import router as cart_router
 from app.api.v1.categories import router as categories_router
+from app.api.v1.orders import router as orders_router
 from app.api.v1.products import router as products_router
 from app.api.v1.seller_applications import router as seller_applications_router
 
@@ -27,6 +28,11 @@ app.include_router(
 
 app.include_router(
     categories_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    orders_router,
     prefix="/api/v1",
 )
 

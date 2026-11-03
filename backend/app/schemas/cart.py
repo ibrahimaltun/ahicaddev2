@@ -8,6 +8,8 @@ class CartProductResponse(BaseModel):
     name: str
     slug: str
     price: Decimal
+    stock: int
+    image_url: str | None = None
 
     model_config = ConfigDict(
         from_attributes=True,

@@ -52,6 +52,29 @@ def get_cart(
     return _load_cart_with_items(db, cart)
 
 
+@router.delete(
+    "",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def clear_cart(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    cart = db.scalar(select(Cart).where(Cart.user_id == current_user.id))
+
+    if cart is not None:
+        cart_items = db.scalars(
+            select(CartItem).where(CartItem.cart_id == cart.id)
+        ).all()
+
+        for item in cart_items:
+            db.delete(item)
+
+        db.commit()
+
+    return None
+
+
 @router.post(
     "/items",
     response_model=CartResponse,

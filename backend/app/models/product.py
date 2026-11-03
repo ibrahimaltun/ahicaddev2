@@ -76,3 +76,16 @@ class Product(Base):
     brand: Mapped["Brand | None"] = relationship(
         back_populates="products",
     )
+
+    @property
+    def primary_image_url(self) -> str | None:
+        """Sepet görüntüleme için tek bir gösterim görseli döndürür."""
+        if not self.images:
+            return None
+
+        primary_image = next(
+            (image for image in self.images if image.is_primary),
+            None,
+        )
+
+        return (primary_image or self.images[0]).image_url
