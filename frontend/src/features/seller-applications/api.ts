@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchWithTotal } from "@/lib/api/client";
 
 import type {
     SellerApplication,
@@ -26,11 +26,22 @@ export async function getMySellerApplications(): Promise<SellerApplication[]> {
 
 export async function getSellerApplications(
     status?: SellerApplicationStatus,
-): Promise<SellerApplication[]> {
-    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    page = 1,
+): Promise<{ items: SellerApplication[]; total: number }> {
+    const params = new URLSearchParams();
 
-    return apiFetch<SellerApplication[]>(
-        `/seller-applications/admin${query}`,
+    if (status) {
+        params.set("status", status);
+    }
+
+    if (page > 1) {
+        params.set("page", String(page));
+    }
+
+    const query = params.toString();
+
+    return apiFetchWithTotal<SellerApplication>(
+        `/seller-applications/admin${query ? `?${query}` : ""}`,
     );
 }
 

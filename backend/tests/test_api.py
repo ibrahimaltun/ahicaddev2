@@ -282,10 +282,11 @@ class TestProducts:
         assert len(res.json()) == 1
         assert res.json()[0]["slug"] == "cay"
 
+        # Arama kapsami ad + aciklamadir: "cay" urununun aciklamasindaki
+        # "lokumu" terimi de eslesir.
         res = admin.get(f"{API}/products?q=LOKUM")
         assert res.status_code == 200
-        assert len(res.json()) == 1
-        assert res.json()[0]["slug"] == "lokum"
+        assert {p["slug"] for p in res.json()} == {"lokum", "cay"}
 
         res = admin.get(f"{API}/products?q=olmayan")
         assert res.status_code == 200

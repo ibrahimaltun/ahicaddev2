@@ -22,6 +22,7 @@ def create_access_token(user_id: int, role: str) -> str:
     payload = {
         "sub": str(user_id),
         "role": role,
+        "typ": "access",
         "iat": now,
         "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
     }
@@ -34,8 +35,14 @@ def create_access_token(user_id: int, role: str) -> str:
 
 
 def decode_access_token(token: str) -> dict:
-    return jwt.decode(
+    payload = jwt.decode(
         token,
         settings.jwt_secret,
         algorithms=[settings.jwt_algorithm],
     )
+
+    # Yenileme tokenlari oturum dogrulamasi icin KULLANILAMAZ.
+    if payload.get("typ") not in (None, "access"):
+        raise jwt.InvalidTokenError("Bu token erisim tokeni degil.")
+
+    return payload

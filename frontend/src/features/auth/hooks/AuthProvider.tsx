@@ -11,6 +11,7 @@ import {
 import {
     getCurrentUser,
     logout as logoutRequest,
+    refreshSession,
 } from "../api";
 
 import type { User } from "../types";
@@ -42,7 +43,15 @@ export function AuthProvider({
 
             setUser(currentUser);
         } catch {
-            setUser(null);
+            // Erisim tokeni dolduysa sessizce yenilemeyi dene (30 dk'lik
+            // erisim tokeni sonrasi zor cikis engellenir).
+            try {
+                const session = await refreshSession();
+
+                setUser(session.user);
+            } catch {
+                setUser(null);
+            }
         } finally {
             setLoading(false);
         }

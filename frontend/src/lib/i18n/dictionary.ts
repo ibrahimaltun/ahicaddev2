@@ -200,6 +200,10 @@ export const tr = {
         addedToCartMessage: "sepetinize eklendi.",
         addToCartError: "Ürün sepete eklenemedi.",
         stockCount: "Stok: {count}",
+        paginationLabel: "Ürün sayfalama",
+        prevPage: "Önceki sayfa",
+        nextPage: "Sonraki sayfa",
+        pageInfo: "Sayfa {page} / {total}",
     },
     categories: {
         label: "Kategoriler",
@@ -228,6 +232,13 @@ export const tr = {
         total: "Toplam",
         checkout: "Ödeme Adımına Geç",
         clearCartError: "Sepet temizlenemedi.",
+        itemUnavailable:
+            "Bu ürün artık satın alınamıyor; lütfen sepetinizden çıkarın.",
+        insufficientStock:
+            "Sepetinizdeki adet stoktan fazla. Kalan stok: {stock}",
+        hasUnavailableItems:
+            "Sepetinizde satın alınamayan ürünler var; ödeme adımına geçmeden önce sepetinizi güncelleyin.",
+        fixBeforeCheckout: "Ödeme için sepeti güncelleyin",
     },
     checkout: {
         label: "Alışveriş",
@@ -265,6 +276,8 @@ export const tr = {
         fullNameRequired: "Lütfen ad soyad girin.",
         createError: "Sipariş oluşturulamadı.",
         emptyCart: "Sepetinizde ürün bulunmuyor.",
+        blockedUnavailable:
+            "Sepetinizde satın alınamayan ürünler var; sipariş oluşturulamadı.",
     },
     orders: {
         label: "Hesabım",
@@ -361,6 +374,7 @@ export const tr = {
         newPassword: "Yeni şifre",
         confirmPassword: "Yeni şifre (tekrar)",
         passwordMismatch: "Şifreler eşleşmiyor. Lütfen kontrol edin.",
+        passwordMinLength: "Şifre en az 8 karakter olmalıdır.",
         resetButton: "Şifreyi Güncelle",
         resetting: "Güncelleniyor...",
         resetSuccess:
@@ -411,6 +425,13 @@ export const tr = {
         roleTitle: "Hesap türü",
         roleAdmin: "Yönetici",
         roleCustomer: "Müşteri",
+        changePasswordTitle: "Şifre Değiştir",
+        changePasswordDescription:
+            "Şifrenizi güncelleyin; güvenlik için diğer cihazlardaki oturumlar kapatılır.",
+        currentPassword: "Mevcut şifre",
+        changePasswordButton: "Şifreyi Güncelle",
+        changePasswordSaving: "Güncelleniyor...",
+        changePasswordError: "Şifre güncellenemedi.",
     },
     seller: {
         landingEyebrow: "Ahicadde'de satış",
@@ -558,6 +579,7 @@ export const tr = {
             decidedAt: "Karar tarihi",
             noApplications: "Bu filtrede başvuru bulunmuyor.",
             loadError: "Başvurular yüklenemedi.",
+            totalCount: "{count} başvuru",
             contact: "İletişim",
             business: "İşletme",
             products: "Ürünler",
@@ -604,6 +626,7 @@ export const tr = {
             updated: "Güncellendi ✓",
             noOrders: "Bu filtrede sipariş bulunmuyor.",
             loadError: "Siparişler yüklenemedi.",
+            totalCount: "{count} sipariş",
         },
         users: {
             searchPlaceholder: "E-posta veya ad ara...",
@@ -841,6 +864,10 @@ export const en: Dictionary = {
         addedToCartMessage: "added to your cart.",
         addToCartError: "The product could not be added to the cart.",
         stockCount: "Stock: {count}",
+        paginationLabel: "Product pagination",
+        prevPage: "Previous page",
+        nextPage: "Next page",
+        pageInfo: "Page {page} / {total}",
     },
     categories: {
         label: "Categories",
@@ -869,6 +896,13 @@ export const en: Dictionary = {
         total: "Total",
         checkout: "Proceed to Checkout",
         clearCartError: "The cart could not be cleared.",
+        itemUnavailable:
+            "This product is no longer available for purchase; please remove it from your cart.",
+        insufficientStock:
+            "The quantity in your cart exceeds the stock. Remaining stock: {stock}",
+        hasUnavailableItems:
+            "Your cart contains items that cannot be purchased; please update your cart before proceeding to checkout.",
+        fixBeforeCheckout: "Update cart to continue",
     },
     checkout: {
         label: "Shopping",
@@ -905,6 +939,8 @@ export const en: Dictionary = {
         fullNameRequired: "Please enter your full name.",
         createError: "The order could not be created.",
         emptyCart: "There are no products in your cart.",
+        blockedUnavailable:
+            "Your cart contains items that cannot be purchased; the order could not be created.",
     },
     orders: {
         label: "My Account",
@@ -1001,6 +1037,7 @@ export const en: Dictionary = {
         newPassword: "New password",
         confirmPassword: "New password (confirm)",
         passwordMismatch: "Passwords do not match. Please check them.",
+        passwordMinLength: "Password must be at least 8 characters.",
         resetButton: "Update Password",
         resetting: "Updating...",
         resetSuccess:
@@ -1051,6 +1088,13 @@ export const en: Dictionary = {
         roleTitle: "Account type",
         roleAdmin: "Administrator",
         roleCustomer: "Customer",
+        changePasswordTitle: "Change Password",
+        changePasswordDescription:
+            "Update your password; sessions on other devices are closed for security.",
+        currentPassword: "Current password",
+        changePasswordButton: "Update Password",
+        changePasswordSaving: "Updating...",
+        changePasswordError: "The password could not be updated.",
     },
     seller: {
         landingEyebrow: "Selling on Ahicadde",
@@ -1201,6 +1245,7 @@ export const en: Dictionary = {
             decidedAt: "Decision date",
             noApplications: "No applications for this filter.",
             loadError: "Could not load applications.",
+            totalCount: "{count} applications",
             contact: "Contact",
             business: "Business",
             products: "Products",
@@ -1248,6 +1293,7 @@ export const en: Dictionary = {
             updated: "Updated ✓",
             noOrders: "No orders for this filter.",
             loadError: "Could not load orders.",
+            totalCount: "{count} orders",
         },
         users: {
             searchPlaceholder: "Search by email or name...",

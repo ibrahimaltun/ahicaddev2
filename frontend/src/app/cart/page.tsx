@@ -3,9 +3,11 @@
 import Link from "next/link";
 
 import { buttonClasses } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCart } from "@/features/cart/CartProvider";
 import { useI18n } from "@/features/i18n/LocaleProvider";
+import { getCartItemProblem, hasCartProblem } from "@/features/cart/types";
 
 export default function CartPage() {
     const { t } = useI18n();
@@ -89,6 +91,7 @@ export default function CartPage() {
     );
 
     const hasSampleItems = items.some((item) => item.product.is_sample);
+    const cartHasProblem = hasCartProblem(items);
 
     return (
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
@@ -132,9 +135,20 @@ export default function CartPage() {
                 </p>
             )}
 
+            {cartHasProblem && (
+                <div className="mt-6">
+                    <Notice tone="warning" role="alert">
+                        {t("cart.hasUnavailableItems")}
+                    </Notice>
+                </div>
+            )}
+
             <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_320px]">
                 <div className="space-y-4">
-                    {items.map((item) => (
+                    {items.map((item) => {
+                        const problem = getCartItemProblem(item);
+
+                        return (
                         <div
                             key={item.id}
                             className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-4"
@@ -162,6 +176,27 @@ export default function CartPage() {
                                     {item.product.price} ₺
                                 </p>
 
+                                {problem === "unavailable" && (
+                                    <p
+                                        role="alert"
+                                        className="mt-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs text-danger-fg"
+                                    >
+                                        ⚠ {t("cart.itemUnavailable")}
+                                    </p>
+                                )}
+
+                                {problem === "insufficient_stock" && (
+                                    <p
+                                        role="alert"
+                                        className="mt-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2 text-xs text-warning-fg"
+                                    >
+                                        ⚠{" "}
+                                        {t("cart.insufficientStock", {
+                                            stock: item.product.stock,
+                                        })}
+                                    </p>
+                                )}
+
                                 <div className="mt-2 flex items-center gap-3">
                                     <label
                                         className="sr-only"
@@ -179,7 +214,8 @@ export default function CartPage() {
                                                 Number(event.target.value),
                                             ).catch(() => {});
                                         }}
-                                        className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm"
+                                        disabled={problem !== null}
+                                        className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                                         aria-label={`${item.product.name} ürün adedi`}
                                     >
                                         {Array.from(
@@ -217,7 +253,8 @@ export default function CartPage() {
                                 ₺
                             </p>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <aside className="h-fit rounded-2xl border border-border bg-surface p-6">
@@ -243,12 +280,22 @@ export default function CartPage() {
                         </span>
                     </div>
 
-                    <Link
-                        href="/checkout"
-                        className={buttonClasses("primary", "lg", "mt-6 w-full")}
-                    >
-                        {t("cart.checkout")}
-                    </Link>
+                    {cartHasProblem ? (
+                        <button
+                            type="button"
+                            disabled
+                            className="mt-6 w-full cursor-not-allowed rounded-full border border-border bg-surface-2 px-4 py-3 text-sm font-medium text-foreground-muted"
+                        >
+                            {t("cart.fixBeforeCheckout")}
+                        </button>
+                    ) : (
+                        <Link
+                            href="/checkout"
+                            className={buttonClasses("primary", "lg", "mt-6 w-full")}
+                        >
+                            {t("cart.checkout")}
+                        </Link>
+                    )}
                 </aside>
             </div>
         </main>

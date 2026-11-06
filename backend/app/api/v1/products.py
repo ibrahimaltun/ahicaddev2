@@ -3,7 +3,7 @@ import unicodedata
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -14,6 +14,11 @@ from app.schemas.product import (
     CustomerProductCreate,
     ProductCreate,
     ProductResponse,
+)
+from app.services.search_text import (
+    build_search_text,
+    escape_like,
+    normalize_search_text,
 )
 
 router = APIRouter(
@@ -166,6 +171,8 @@ def create_product(
             detail="Brand not found",
         )
 
+    category = db.get(Category, product_data.category_id)
+
     product = Product(
         name=product_data.name,
         slug=product_data.slug,
@@ -175,6 +182,11 @@ def create_product(
         category_id=product_data.category_id,
         brand_id=product_data.brand_id,
         status=Product.STATUS_APPROVED,
+        search_text=build_search_text(
+            product_data.name,
+            product_data.description,
+            category.name if category else None,
+        ),
     )
 
     db.add(product)
@@ -235,6 +247,8 @@ def create_customer_product(
             ),
         )
 
+    category = db.get(Category, data.category_id)
+
     product = Product(
         name=data.name.strip(),
         slug=_unique_slug(db, data.name.strip()),
@@ -247,6 +261,11 @@ def create_customer_product(
         submitted_at=_utc_now(),
         is_sample=False,
         is_active=True,
+        search_text=build_search_text(
+            data.name,
+            data.description,
+            category.name if category else None,
+        ),
     )
 
     if data.image_url is not None:
@@ -335,18 +354,23 @@ def list_products(
         query = query.where(Product.category.has(Category.slug == category))
 
     if q is not None and q.strip():
+        term = q.strip()
+
         # LIKE joker karakterlerini kacir: "%", "_" ve "\" arama teriminde
         # literal olarak aranir, aksi halde her seye eslesir.
-        needle = (
-            "%"
-            + q.strip()
-            .lower()
-            .replace("\\", "\\\\")
-            .replace("%", "\\%")
-            .replace("_", "\\_%")
-            + "%"
+        name_needle = "%" + escape_like(term.lower()) + "%"
+
+        # Aksan duyarsiz arama: ad + aciklama + kategori adi tek normalize
+        # metin uzerinden eslesir ("suzme" -> "Süzme", "SEKER" -> "seker").
+        normalized_needle = "%" + escape_like(normalize_search_text(term)) + "%"
+
+        query = query.where(
+            or_(
+                Product.search_text.like(normalized_needle, escape="\\"),
+                # search_text NULL kalan eski kayitlar icin isim yedegi.
+                Product.name.ilike(name_needle, escape="\\"),
+            )
         )
-        query = query.where(Product.name.ilike(needle, escape="\\"))
 
     products = db.scalars(
         query.offset(offset).limit(limit)

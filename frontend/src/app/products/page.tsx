@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ProductCard } from "@/components/product/ProductCard";
-import { getProducts } from "@/features/products/api";
+import { getProductsPage } from "@/features/products/api";
 import { jsonLdHtml } from "@/lib/json-ld";
 import { getServerI18n } from "@/lib/i18n/server";
 
@@ -9,10 +9,13 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
+const PRODUCTS_PER_PAGE = 20;
+
 interface ProductsPageProps {
     searchParams: Promise<{
         category?: string;
         q?: string;
+        page?: string;
     }>;
 }
 
@@ -40,19 +43,55 @@ export async function generateMetadata({
     };
 }
 
+/** Sayfalama baglantilarinda mevcut filtreleri koruyan URL uretir. */
+function buildProductsHref(
+    page: number,
+    category?: string,
+    q?: string,
+): string {
+    const params = new URLSearchParams();
+
+    if (category) {
+        params.set("category", category);
+    }
+
+    if (q) {
+        params.set("q", q);
+    }
+
+    if (page > 1) {
+        params.set("page", String(page));
+    }
+
+    const query = params.toString();
+
+    return query ? `/products?${query}` : "/products";
+}
+
 export default async function ProductsPage({
     searchParams,
 }: ProductsPageProps) {
-    const { category, q } = await searchParams;
+    const { category, q, page: pageParam } = await searchParams;
     const { t } = await getServerI18n();
 
-    const products = await getProducts({
-        page: 1,
-        limit: 20,
+    const requestedPage = Math.max(
+        Number.parseInt(pageParam ?? "1", 10) || 1,
+        1,
+    );
+
+    const { items: products, total } = await getProductsPage({
+        page: requestedPage,
+        limit: PRODUCTS_PER_PAGE,
         category,
         q,
-    }).catch(() => []);
+    }).catch(() => ({ items: [], total: 0 }));
 
+    const totalPages = Math.max(
+        Math.ceil(total / PRODUCTS_PER_PAGE),
+        1,
+    );
+
+    const currentPage = Math.min(requestedPage, totalPages);
     const itemListJsonLd = {
         "@context": "https://schema.org",
         "@type": "ItemList",
@@ -136,6 +175,60 @@ export default async function ProductsPage({
                         />
                     ))}
                 </div>
+            )}
+
+            {totalPages > 1 && (
+                <nav
+                    aria-label={t("products.paginationLabel")}
+                    className="mt-12 flex items-center justify-center gap-4"
+                >
+                    {currentPage > 1 ? (
+                        <Link
+                            href={buildProductsHref(
+                                currentPage - 1,
+                                category,
+                                q,
+                            )}
+                            className="rounded-full border border-border bg-surface px-5 py-2 text-sm font-medium text-foreground transition hover:bg-surface-2"
+                        >
+                            ‹ {t("products.prevPage")}
+                        </Link>
+                    ) : (
+                        <span
+                            aria-hidden
+                            className="rounded-full border border-border bg-surface px-5 py-2 text-sm font-medium text-foreground-subtle opacity-50"
+                        >
+                            ‹ {t("products.prevPage")}
+                        </span>
+                    )}
+
+                    <span className="text-sm text-foreground-muted">
+                        {t("products.pageInfo", {
+                            page: currentPage,
+                            total: totalPages,
+                        })}
+                    </span>
+
+                    {currentPage < totalPages ? (
+                        <Link
+                            href={buildProductsHref(
+                                currentPage + 1,
+                                category,
+                                q,
+                            )}
+                            className="rounded-full border border-border bg-surface px-5 py-2 text-sm font-medium text-foreground transition hover:bg-surface-2"
+                        >
+                            {t("products.nextPage")} ›
+                        </Link>
+                    ) : (
+                        <span
+                            aria-hidden
+                            className="rounded-full border border-border bg-surface px-5 py-2 text-sm font-medium text-foreground-subtle opacity-50"
+                        >
+                            {t("products.nextPage")} ›
+                        </span>
+                    )}
+                </nav>
             )}
         </main>
     );

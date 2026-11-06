@@ -15,6 +15,22 @@ export const ORDER_STATUSES: OrderStatus[] = [
     "cancelled",
 ];
 
+/**
+ * Durum makinesi (backend `ORDER_STATUS_TRANSITIONS` ile aynidir):
+ * admin yalnizca bu gecisleri secebilir; gecersiz secim 409 dondurur.
+ */
+export const ALLOWED_ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+    pending_payment: ["processing", "cancelled"],
+    processing: ["shipped", "cancelled"],
+    shipped: ["delivered"],
+    delivered: [],
+    cancelled: [],
+};
+
+export function allowedStatusesFor(status: OrderStatus): OrderStatus[] {
+    return ALLOWED_ORDER_TRANSITIONS[status] ?? [];
+}
+
 /** Durum rozetlerinin renk tonlari (i18n metinleri sozlukte tutulur). */
 export const ORDER_STATUS_TONES: Record<OrderStatus, BadgeTone> = {
     pending_payment: "warning",

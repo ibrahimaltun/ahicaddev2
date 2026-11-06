@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 
 import type {
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
@@ -69,6 +70,25 @@ export async function sendVerificationEmail(): Promise<{
     message: string;
 }> {
     return apiFetch<{ message: string }>("/auth/send-verification", {
+        method: "POST",
+    });
+}
+
+export async function changePassword(
+    data: ChangePasswordRequest,
+): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+/** Erisim tokeni doldugunda sessiz oturum yenileme (refresh cookie ile). */
+export async function refreshSession(): Promise<{
+    message: string;
+    user: User;
+}> {
+    return apiFetch<{ message: string; user: User }>("/auth/refresh", {
         method: "POST",
     });
 }

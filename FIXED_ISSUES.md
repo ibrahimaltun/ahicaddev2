@@ -517,6 +517,155 @@ paralel sipariş stok yarışı, tüm frontend sayfaları. Sonuç: **113 pytest 
 - **P3:** Görseller harici URL (NexT Image yok); rastgele URL doğrulama sadece http(s)
   şeması — CDN/uzunluk sınırı genişletilebilir.
 
+---
+
+## 13. Addendum — 🟡 Orta İş Paketleri: Durum Makinesi, Oturum Yönetimi, Rate-Limit, Sayfalama, Sepet Uyarısı, Türkçe Arama (2026-11-06)
+
+§12'deki denetimde açıklanmış **tüm 🟡 ORTA** iş paketleri bu ekte kodlanıp
+doğrulandı. Aşağıdaki alt başlıklar §12'deki "açık bulgular" listesiyle birebir
+eşleşir.
+
+### 13.1 Sipariş durum makinesi + durum e-postaları + sipariş listesi sayfalama (P1)
+
+- `app/api/v1/orders.py`:
+  - `ORDER_STATUS_TRANSITIONS` geçiş matrisi eklendi:
+    `pending_payment → processing|cancelled`, `processing → shipped|cancelled`,
+    `shipped → delivered`, `delivered/cancelled → (yok)`. `PATCH /orders/{id}/status`
+    artık matris dışı geçişlerde **409** döner (`shipped → processing` kapandı).
+  - `ORDER_STATUS_EMAILS`: `processing/shipped/delivered/cancelled` geçişlerinde
+    müşteriye Türkçe durum e-postası gönderilir (gönderim hatası API yanıtını
+    bozmaz; `logger.exception` ile raporlanır). Müşteri iptali (`/cancel`) de
+    e-posta üretir.
+  - `GET /orders`: `page` (≥1) + `limit` (1–100) parametreleri ve
+    **`X-Total-Count`** başlığı eklendi.
+- `app/api/v1/admin.py` `GET /admin/orders`: `X-Total-Count` başlığı eklendi
+  (durum filtresiyle uyumlu).
+- Frontend:
+  - `features/orders/types.ts`: `ALLOWED_ORDER_TRANSITIONS` + `allowedStatusesFor()`
+    (backend matrisinin aynısı).
+  - `admin/_components/orders-tab.tsx`: durum seçimi artık **yalnızca geçerli
+    geçişleri** listeler; filtreye göre toplam sayı (`admin.orders.totalCount`)
+    ve sayfa düğmeleri eklendi; filtre değişimi sayfayı 1'e sıfırlar.
+
+### 13.2 Oturum yönetimi: refresh token + şifre değiştirme (P1)
+
+- Yeni model `app/models/refresh_token.py` (`refresh_tokens` tablosu: kullanıcı
+  FK (CASCADE), sha256 `token_hash` (unique), `expires_at`, `revoked_at`);
+  migrasyon **`c3d4e5f6a7b8_add_refresh_tokens.py`**.
+- `app/api/v1/auth.py`:
+  - **Giriş**: artık 30 dk'lık `access_token` + 14 günlük `refresh_token`
+    (httpOnly, `secure`, `samesite=lax`, `path=/api/v1/auth`) cookie'leri set eder.
+  - **`POST /auth/refresh`** (yeni): DB'de hash eşleşmesi + süre + iptal kontrolü;
+    **rotasyonlu** (eski token iptal edilir, yenisi üretilir) ve IP bazlı
+    rate-limit'li. `GET /auth/me` 401 döndüğünde istemci sessizce yeniler.
+  - **`POST /auth/logout`** (güçlendirildi): mevcut refresh token'ı DB'de iptal
+    eder + iki cookie'yi de siler.
+  - **`POST /auth/change-password`** (yeni): mevcut şifre doğrulaması,
+    aynı-şifre reddi, tüm refresh oturumlarının iptali, yeni token'lar ve
+    "Şifreniz değiştirildi" bildirim e-postası.
+  - **`POST /auth/reset-password`**: şifre sıfırlaması tüm refresh oturumlarını
+    düşürür (çalıntı oturum temizliği).
+  - `app/core/security.py`: JWT artık `typ: "access"` taşıyor; `decode_access_token`
+    `typ=refresh` ile üretilmiş bir token'ı **kabul etmez** (erişim
+    doğrulamasında yenileme tokenı kullanılamaz).
+- Frontend:
+  - `AuthProvider`: `/auth/me` 401 → tek seferlik `/auth/refresh` → başarılıysa
+    kullanıcı korunur (30 dk'da zor çıkış bitti).
+  - `account/page.tsx`: "Şifre Değiştir" formu (mevcut + yeni + tekrar;
+    `<8 karakter` ve eşleşme kontrolleri, başarı/hata Notice'ları).
+  - `features/auth/api.ts`: `changePassword()`, `refreshSession()`.
+
+### 13.3 Rate limiter: Redis arka ucu + güvenilir proxy (P2)
+
+- `app/core/rate_limit.py` yeniden yapılandırıldı:
+  - `MemoryRateLimiter` (önceki davranış, tek proses) + **`RedisRateLimiter`**
+    (ZSET üzerinde kayan pencere; pipeline ile atomik). `settings.rate_limit_backend`
+    `"redis"` ise `redis.Redis.from_url(settings.redis_url)` ile kurulur
+    (bağlantı zaman aşımı 2 sn). Redis hatasında **otomatik bellek-içi
+    yedek** devreye girer (60 sn'de bir uyarı logu) — sürdürülebilirlik.
+  - `redis==5.2.1` `requirements.txt`'e eklendi; paket yoksa koda sessiz
+    bellek-içi düşme mevcut.
+  - **`get_client_ip` güvenlik düzeltmesi**: varsayılan olarak
+    `X-Forwarded-For` artık **yok sayılır** (`trust_proxy_headers=false`);
+    ters proxy arkasında `trusted_proxies` (IP/CIDR listesi) ayarlanınca
+    doğrudan bağlantı güvenilir proxy ise XFF zinciri sağdan sola güvenilir
+    halkalar atlanarak çözülür. Taklit başlıkla limiter bypass'ı kapandı
+    (regresyon testi: 5 farklı taklit XFF ile 6. denemede 429).
+- Test aracı: `FakeRedis` (ZSET davranışı) ile limiter birim testleri.
+
+### 13.4 Sayfalama: frontend + admin listeleri (P2)
+
+- `GET /products`: mevcut `page/limit/X-Total-Count` artık UI'da kullanılıyor:
+  - `features/products/api.ts` → `getProductsPage()` (`cache: "no-store"`,
+    X-Total-Count okur).
+  - `products/page.tsx` → `page` query param + filtreleri koruyan
+    `buildProductsHref()` + "‹ Önceki sayfa / Sayfa x / y / Sonraki sayfa ›"
+    nav (sadece `totalPages > 1` iken).
+- Satıcı başvuruları `GET /seller-applications/admin`: `page/limit` +
+  `X-Total-Count` eklendi (backend) ve admin sekmelerine toplam + sayfalama
+  geldi (`admin.applications.totalCount`).
+- `lib/api/client.ts` → `apiFetchWithTotal()` yardımcısı.
+
+### 13.5 Sepet proaktif uyarısı (P2)
+
+- `schemas/cart.py`: `CartProductResponse` artık `is_active` ve `status`
+  döndürür (şema kırılmaz; varsayılanlar mevcut müşterilerle uyumlu).
+- `features/cart/types.ts` → `getCartItemProblem()` / `hasCartProblem()`:
+  `unavailable` (pasif veya onay dışı) ya da `insufficient_stock` tespiti.
+- `cart/page.tsx`: satır başına uyarı (unavailable → danger, stok → warning),
+  sorunlu satırda adet seçimi devre dışı, genel uyarı Notice'ı ve
+  "Ödeme için sepeti güncelleyin" engel düğmesi (checkout bağlantısı kapanır).
+- `checkout/page.tsx`: geçersiz sepette üstte uyarı + sepete dön bağlantısı,
+  submit düğmesi + `handleSubmit` çift taraflı engel (400/409'a düşmeden
+  kullanıcı bilgilendirilir).
+
+### 13.6 Arama kapsamı + Türkçe aksan duyarsız arama (P2)
+
+- Yeni servis `app/services/search_text.py`: TR transliterasyon + lower +
+  boşluk normalizasyonu (`normalize_search_text`, `escape_like`,
+  `build_search_text`).
+- `Product.search_text` kolonu (ad + açıklama + kategori adı tek metin):
+  - Yazıldığı yerler: admin ürün oluşturma/güncelleme, müşteri `/submissions`,
+    harici katalog içe aktarma (kategori adı dahil).
+  - Arama: `search_text LIKE` (normalize sorgu) **veya** `name ILIKE`
+    (search_text NULL eski kayıtlar için yedek). Joker kaçışı korunur
+    (`%`/`_` literal aranır).
+  - Migrasyon **`d5e6f7a8b9c0_add_products_search_text.py`**: kolon + btree
+    indeks + tüm mevcut kayıtları REPLACE zinciriyle dolduran backfill +
+    Postgres'te **pg_trgm GIN** indeksi (`CREATE EXTENSION pg_trgm`; izin
+    yoksa sessiz btree ile devam).
+- Sonuç: `suzme` → "Süzme", `SÜZME` → "suzme", `balı` → "bali"; arama
+  açıklama ve kategori adında da çalışır (SQLite + Postgres aynı davranış).
+
+### 13.7 Migrasyonlar
+
+| Revision | Amaç |
+|---|---|
+| `c3d4e5f6a7b8` | `refresh_tokens` tablosu (hash, süre, iptal) |
+| `d5e6f7a8b9c0` | `products.search_text` + btree + pg_trgm GIN + veri backfill |
+
+### Doğrulama (13)
+
+| Kontrol | Sonuç |
+|---|---|
+| `pytest tests/` | ✅ **146 passed** (113 → 146; +33: durum makinesi ×3, sipariş e-postaları ×2, sipariş sayfalama ×2, oturum/refresh ×8, şifre değiştirme ×4, limiter/IP ×6, arama ×3, başvuru sayfalama ×1, genişletilmiş mevcut testler) |
+| `npx tsc --noEmit` / `npm run lint` | ✅ temiz |
+| `npm run build` (Next 16) | ✅ başarılı (tüm rotalar derlendi) |
+| Gerçek Postgres 16'da `alembic downgrade/upgrade` | ✅ tek head (`d5e6f7a8b9c0`), backfill doğrulandı: `Organik Süzme Bal` → `organik suzme bal kovan bali el sanatlari`; btree + gin_trgm indeksleri oluştu |
+| `refresh_tokens` tablosu migrasyonu | ✅ (Postgres'te oluştu) |
+
+### Açık bulgular (güncel)
+
+- **P1:** (artık yok — iki P1 paketi bu ekte kapandı)
+- **P2 → tamamlandı:** rate limiter Redis + güvenilir proxy; listelerde
+  sayfalama; frontend sayfalama; sepet proaktif uyarısı; arama kapsamı +
+  Türkçe arama.
+- **P3 (kalan):** `frontend_url` production denetimi + proxy HTTPS zorunluluğu;
+  sitemap ISR gecikmesi; görsel URL CDN/uzunluk sınırı.
+- **Not:** Kategori adı, `search_text`'e yazım anında gömülür; kategori adı
+  sonradan değiştirilirse ürünün arama metni bir sonraki ürün
+  güncellemesinde tazelenir (bilinen, belgelenmiş sınırlama).
+
 
 
 

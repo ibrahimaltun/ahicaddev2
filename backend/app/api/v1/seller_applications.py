@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.v1.auth import get_current_user, require_admin
@@ -91,15 +91,32 @@ def list_seller_applications(
         default=None,
         alias="status",
     ),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
+    response: Response = Response(),
 ):
+    """Basvurulari sayfali dondurur; toplam sayisi X-Total-Count ile gider."""
     query = select(SellerApplication).order_by(SellerApplication.created_at.desc())
 
     if application_status:
         query = query.where(SellerApplication.status == application_status)
 
-    return db.scalars(query).all()
+    total_query = select(func.count()).select_from(SellerApplication)
+
+    if application_status:
+        total_query = total_query.where(
+            SellerApplication.status == application_status
+        )
+
+    total = db.scalar(total_query)
+
+    response.headers["X-Total-Count"] = str(total or 0)
+
+    return db.scalars(
+        query.offset((page - 1) * limit).limit(limit)
+    ).all()
 
 
 @router.patch(

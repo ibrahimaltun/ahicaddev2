@@ -58,6 +58,56 @@ export async function getProducts(
     return response.json();
 }
 
+/**
+ * Sayfa + toplam kayit döndüren liste çekimi (X-Total-Count tabanli).
+ * Sayfalama arayüzü bu fonksiyonu kullanir; liste canli veri isterse
+ * `cache: "no-store"` ile güncel toplam görür.
+ */
+export async function getProductsPage(
+    params: ProductListParams = {},
+): Promise<{ items: Product[]; total: number }> {
+    const searchParams = new URLSearchParams();
+
+    searchParams.set(
+        "page",
+        String(Math.max(params.page ?? 1, 1)),
+    );
+    searchParams.set("limit", String(params.limit ?? 20));
+
+    if (params.category !== undefined) {
+        searchParams.set("category", params.category);
+    }
+
+    if (params.q !== undefined && params.q.trim() !== "") {
+        searchParams.set("q", params.q.trim());
+    }
+
+    const query = searchParams.toString();
+
+    const response = await fetch(
+        `${API_BASE_URL}/products${query ? `?${query}` : ""}`,
+        {
+            cache: "no-store",
+        },
+    );
+
+    if (!response.ok) {
+        const errorText = await response.text();
+
+        throw new Error(
+            `Ürünler çekilirken bir hata oluştu. Status: ${response.status}, Detail: ${errorText}`,
+        );
+    }
+
+    const items = (await response.json()) as Product[];
+    const total = Number(response.headers.get("X-Total-Count"));
+
+    return {
+        items,
+        total: Number.isFinite(total) ? total : items.length,
+    };
+}
+
 export async function getRelatedProducts(
     slug: string,
     limit = 4,

@@ -24,6 +24,8 @@ export function ApplicationsTab() {
 
     const [filter, setFilter] = useState<Filter>("pending");
     const [applications, setApplications] = useState<SellerApplication[]>([]);
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
     const [actionError, setActionError] = useState("");
@@ -40,10 +42,12 @@ export function ApplicationsTab() {
             try {
                 const data = await getSellerApplications(
                     filter === "all" ? undefined : filter,
+                    page,
                 );
 
                 if (!cancelled) {
-                    setApplications(data);
+                    setApplications(data.items);
+                    setTotal(data.total);
                     setLoadError("");
                 }
             } catch (loadError_) {
@@ -64,11 +68,19 @@ export function ApplicationsTab() {
         return () => {
             cancelled = true;
         };
-    }, [filter, reloadToken, t]);
+    }, [filter, page, reloadToken, t]);
 
     const reload = useCallback(() => {
         setReloadToken((token) => token + 1);
     }, []);
+
+    function handleFilterChange(option: Filter) {
+        setFilter(option);
+        setPage(1);
+    }
+
+    const PAGE_SIZE = 20;
+    const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
     async function handleDecision(
         applicationId: number,
@@ -100,13 +112,13 @@ export function ApplicationsTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 {(["pending", "approved", "rejected", "all"] as Filter[]).map(
                     (option) => (
                         <button
                             key={option}
                             type="button"
-                            onClick={() => setFilter(option)}
+                            onClick={() => handleFilterChange(option)}
                             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                                 filter === option
                                     ? "bg-primary text-primary-foreground"
@@ -118,6 +130,12 @@ export function ApplicationsTab() {
                                 : t(`admin.applications.${option}`)}
                         </button>
                     ),
+                )}
+
+                {!loading && (
+                    <span className="ml-auto text-sm text-foreground-muted">
+                        {t("admin.applications.totalCount", { count: total })}
+                    </span>
                 )}
             </div>
 
@@ -311,6 +329,34 @@ export function ApplicationsTab() {
                         </li>
                     ))}
                 </ul>
+            )}
+
+            {!loading && totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={page <= 1}
+                        onClick={() => setPage((current) => current - 1)}
+                    >
+                        ‹ {t("products.prevPage")}
+                    </Button>
+
+                    <span className="text-sm text-foreground-muted">
+                        {t("products.pageInfo", {
+                            page,
+                            total: totalPages,
+                        })}
+                    </span>
+
+                    <Button
+                        size="sm"
+                        disabled={page >= totalPages}
+                        onClick={() => setPage((current) => current + 1)}
+                    >
+                        {t("products.nextPage")} ›
+                    </Button>
+                </div>
             )}
         </div>
     );

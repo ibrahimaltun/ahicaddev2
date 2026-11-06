@@ -320,3 +320,89 @@ class TestPurchasableProductGuards:
         # X-Total-Count basligi sayfalama icin hazir.
         res = customer.get(f"{API}/products", params={"page": 1, "limit": 1})
         assert res.headers.get("x-total-count") == "1"
+
+
+class TestSearchScope:
+    """Arama kapsami: ad + aciklama + kategori; Turkce aksan duyarsiz."""
+
+    def _create(self, admin, category, name, description, slug):
+        res = admin.post(
+            f"{API}/products",
+            json={
+                "name": name,
+                "slug": slug,
+                "description": description,
+                "price": "50",
+                "stock": 5,
+                "category_id": category["id"],
+            },
+        )
+        assert res.status_code == 201
+
+    def test_accent_insensitive_both_directions(self, customer, admin):
+        category = _category(admin)
+        self._create(
+            admin,
+            category,
+            "Organik Süzme Bal",
+            "Kovan balı, filtresiz",
+            "organik-suzme-bal",
+        )
+
+        # Kullanici aksansiz yazar, urun aksanli: bulunur.
+        res = customer.get(f"{API}/products", params={"q": "suzme"})
+        assert res.status_code == 200
+        assert [p["slug"] for p in res.json()] == ["organik-suzme-bal"]
+
+        # Buyuk harf + aksanli arama da ayni urunu bulur.
+        res = customer.get(f"{API}/products", params={"q": "SÜZME"})
+        assert res.status_code == 200
+        assert [p["slug"] for p in res.json()] == ["organik-suzme-bal"]
+
+        # "balı" (ı) -> "bal" aramasiyla eslesir.
+        res = customer.get(f"{API}/products", params={"q": "BALI"})
+        assert res.status_code == 200
+        assert [p["slug"] for p in res.json()] == ["organik-suzme-bal"]
+
+    def test_search_covers_description(self, customer, admin):
+        category = _category(admin)
+        self._create(
+            admin,
+            category,
+            "Haci Lokum",
+            "Sekerci dükkânından el yapımı lokum",
+            "lokum",
+        )
+
+        res = customer.get(f"{API}/products", params={"q": "sekerci"})
+        assert res.status_code == 200
+        assert [p["slug"] for p in res.json()] == ["lokum"]
+
+        # "dükkan" aksanli haliyle de eslesir.
+        res = customer.get(f"{API}/products", params={"q": "DÜKKAN"})
+        assert res.status_code == 200
+        assert len(res.json()) == 1
+
+    def test_search_covers_category_name(self, customer, admin):
+        category = admin.post(
+            f"{API}/categories",
+            json={"name": "El Sanatları", "slug": "el-sanatlari"},
+        ).json()
+
+        self._create(
+            admin,
+            category,
+            "Ahşap Tepsi",
+            "Sedef kakma el işi tepsi",
+            "ahsap-tepsi",
+        )
+
+        # Kategori adi üzerinden arama.
+        res = customer.get(f"{API}/products", params={"q": "el sanatlari"})
+        assert res.status_code == 200
+        assert [p["slug"] for p in res.json()] == ["ahsap-tepsi"]
+
+        # Kategori adi aksanli yazilarak arama.
+        res = customer.get(f"{API}/products", params={"q": "Sanatları"})
+        assert res.status_code == 200
+        assert len(res.json()) == 1

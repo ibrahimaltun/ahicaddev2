@@ -7,7 +7,7 @@ Tüm uçlar require_admin ile korunur:
 - /orders          : tüm siparişler (durum filtresi ile)
 - /catalog/import  : harici online API'den örnek katalog içe aktarma
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -34,6 +34,7 @@ from app.services.external_catalog import (
     ExternalCatalogError,
     fetch_dummyjson_products,
 )
+from app.services.search_text import build_search_text
 
 router = APIRouter(
     prefix="/admin",
@@ -301,6 +302,14 @@ def update_product(
     if payload.status is not None:
         product.status = payload.status
 
+    # Arama metnini guncel ad/aciklama/kategoriyle tazele.
+    category = db.get(Category, product.category_id) if product.category_id else None
+    product.search_text = build_search_text(
+        product.name,
+        product.description,
+        category.name if category else None,
+    )
+
     # Admin onay ekranina gecene kadar 5 dakikalik otomatik onay akisi isler.
     autoapprove_pending_products(db)
 
@@ -373,6 +382,7 @@ def list_orders(
     limit: int = 50,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
+    response: Response = Response(),
 ):
     page, limit = _clamp_pagination(page, limit)
 
@@ -384,6 +394,15 @@ def list_orders(
 
     if order_status:
         query = query.where(Order.status == order_status)
+
+    total_query = select(func.count()).select_from(Order)
+
+    if order_status:
+        total_query = total_query.where(Order.status == order_status)
+
+    total = db.scalar(total_query)
+
+    response.headers["X-Total-Count"] = str(total or 0)
 
     orders = db.scalars(
         query.offset((page - 1) * limit).limit(limit)
@@ -471,6 +490,11 @@ def import_external_catalog(
             brand_id=None,
             is_sample=True,
             is_active=True,
+            search_text=build_search_text(
+                external_product.name,
+                external_product.description,
+                external_product.category_name,
+            ),
         )
         db.add(product)
         db.flush()

@@ -1,4 +1,4 @@
-import { apiFetch, apiFetchEmpty } from "@/lib/api/client";
+import { apiFetch, apiFetchEmpty, apiFetchWithTotal } from "@/lib/api/client";
 
 import type {
     AdminOrder,
@@ -62,10 +62,23 @@ export async function deleteAdminProduct(productId: number): Promise<void> {
 
 export async function getAdminOrders(
     status?: string,
-): Promise<AdminOrder[]> {
-    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    page = 1,
+): Promise<{ items: AdminOrder[]; total: number }> {
+    const params = new URLSearchParams();
 
-    return apiFetch<AdminOrder[]>(`/admin/orders${query}`);
+    if (status) {
+        params.set("status", status);
+    }
+
+    if (page > 1) {
+        params.set("page", String(page));
+    }
+
+    const query = params.toString();
+
+    return apiFetchWithTotal<AdminOrder>(
+        `/admin/orders${query ? `?${query}` : ""}`,
+    );
 }
 
 export async function updateOrderStatus(

@@ -1,7 +1,8 @@
 from decimal import Decimal
+import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.v1.auth import get_current_user, require_admin
@@ -9,17 +10,56 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models import Cart, CartItem, Order, OrderItem, Product, User
 from app.schemas.order import OrderCreate, OrderResponse, OrderStatusUpdate
+from app.services.email import email_service
+
+logger = logging.getLogger("ahicadde.orders")
 
 router = APIRouter(
     prefix="/orders",
     tags=["Orders"],
 )
 
-# Sipariş bu durumlardayken iptal edilebilir (stok iadesi yapılır).
+# Siparis bu durumlardayken musterinin iptal edebilecegi durumlar.
+# (Stok iadesi yapilir.)
 CANCELLABLE_STATUSES = {"pending_payment", "processing"}
 
-# Bu durumlardaki siparişler artık değiştirilemez.
+# Bu durumlardaki siparisler artik degistirilemez.
 FINAL_STATUSES = {"delivered", "cancelled"}
+
+# Durum makinesi: gecerli admin gecisleri (musteri iptali de bu matrise
+# uyar; musteri yalnizca CANCELLABLE_STATUSES -> cancelled gecisi yapar).
+ORDER_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "pending_payment": {"processing", "cancelled"},
+    "processing": {"shipped", "cancelled"},
+    "shipped": {"delivered"},
+    "delivered": set(),
+    "cancelled": set(),
+}
+
+# Durum degisikliginde musteriyi bilgilendiren e-posta sablonlari.
+ORDER_STATUS_EMAILS: dict[str, tuple[str, str]] = {
+    "processing": (
+        "Siparişiniz hazırlanıyor",
+        "Siparişinizin hazırlanmasına başlandı. Kargoya verildiğinde "
+        "tekrar haber vereceğiz.",
+    ),
+    "shipped": (
+        "Siparişiniz kargoya verildi",
+        "Siparişiniz kargoya verildi. En kısa sürede adresinize teslim "
+        "edilecektir.",
+    ),
+    "delivered": (
+        "Siparişiniz teslim edildi",
+        "Siparişiniz teslim edildi. Bizi tercih ettiğiniz için teşekkür "
+        "ederiz; ürünle ilgili görüşlerinizi bizimle paylaşabilirsiniz.",
+    ),
+    "cancelled": (
+        "Siparişiniz iptal edildi",
+        "Siparişiniz iptal edildi ve ürünler stoğa geri eklendi. Ödeme "
+        "yapmışsanız iade süreci için sipariş numaranızla bizimle "
+        "iletişime geçebilirsiniz.",
+    ),
+}
 
 
 def _load_order(db: Session, order_id: int) -> Order | None:
@@ -55,6 +95,41 @@ def _restock_order_items(db: Session, order: Order) -> None:
             product.stock += item.quantity
 
 
+def _send_order_status_email(order: Order, new_status: str) -> None:
+    """Durum degisikligini musterinin e-postasina bildirir (hataya takilmaz)."""
+    template = ORDER_STATUS_EMAILS.get(new_status)
+
+    if template is None:
+        return
+
+    recipient = order.user.email if order.user else None
+
+    if not recipient:
+        return
+
+    subject_title, body_text = template
+
+    try:
+        email_service.send(
+            to=recipient,
+            subject=f"Ahicadde - Sipariş #{order.id}: {subject_title}",
+            body=(
+                "Merhaba,\n\n"
+                f"{body_text}\n\n"
+                f"Sipariş numarası: #{order.id}\n"
+                f"Toplam: {order.total_price} ₺\n\n"
+                f"Siparişinizi şuradan takip edebilirsiniz: "
+                f"{settings.frontend_url}/orders/{order.id}"
+            ),
+        )
+    except Exception:
+        logger.exception(
+            "Siparis durum e-postasi gonderilemedi (siparis: %s, durum: %s)",
+            order.id,
+            new_status,
+        )
+
+
 @router.get(
     "/payment-info",
 )
@@ -76,14 +151,33 @@ def get_payment_info():
     response_model=list[OrderResponse],
 )
 def list_orders(
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    response: Response = Response(),
 ):
-    orders = db.scalars(
+    """Kullanicinin siparisleri (yeni once, sayfali).
+
+    Toplam kayit sayisi X-Total-Count basligiyla doner.
+    """
+    query = (
         select(Order)
         .options(selectinload(Order.items))
         .where(Order.user_id == current_user.id)
         .order_by(Order.created_at.desc(), Order.id.desc())
+    )
+
+    total = db.scalar(
+        select(func.count()).select_from(
+            select(Order.id).where(Order.user_id == current_user.id).subquery()
+        )
+    )
+
+    response.headers["X-Total-Count"] = str(total or 0)
+
+    orders = db.scalars(
+        query.offset((page - 1) * limit).limit(limit)
     ).all()
 
     return orders
@@ -236,6 +330,8 @@ def cancel_order(
     db.commit()
     db.refresh(order)
 
+    _send_order_status_email(order, "cancelled")
+
     return order
 
 
@@ -257,11 +353,26 @@ def update_order_status(
             detail="Tamamlanmış veya iptal edilmiş siparişin durumu değiştirilemez.",
         )
 
+    # Durum makinesi: yalnizca matriste tanimli gecislere izin verilir.
+    allowed = ORDER_STATUS_TRANSITIONS.get(order.status, set())
+
+    if status_data.status not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"'{order.status}' durumundan '{status_data.status}' durumuna "
+                f"geçilemez. Geçilebilecek durumlar: "
+                f"{', '.join(sorted(allowed)) if allowed else 'yok'}."
+            ),
+        )
+
     if status_data.status == "cancelled":
         _restock_order_items(db, order)
 
     order.status = status_data.status
     db.commit()
     db.refresh(order)
+
+    _send_order_status_email(order, status_data.status)
 
     return order

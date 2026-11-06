@@ -11,6 +11,21 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 14
+
+    # Rate limit altyapisi:
+    # - "memory": tek proseslik kurulumlar icin bellek-ici limiter.
+    # - "redis": coklu proses/makine kurulumlarinda paylasik limiter.
+    #   redis paketi/sunucusu erisilemezse otomatik bellek-ici moda duser.
+    rate_limit_backend: str = "memory"
+    redis_url: str = "redis://localhost:6379/0"
+
+    # Ters proxy arkasinda X-Forwarded-For okuma politikasi.
+    # Varsayilan kapali: istemciler baslik uzerinden IP taklidi yapamaz.
+    # Ters proxy arkasinda acilirken, guvenilir proxy IP'leri virgullu
+    # liste olarak verilir (tek IP veya CIDR, orn. "10.0.0.0/8,127.0.0.1").
+    trust_proxy_headers: bool = False
+    trusted_proxies: str = ""
 
     payment_iban: str = "TR00 0000 0000 0000 0000 0000 0000"
     payment_receiver: str = "Ahicadde Ödemeleri"

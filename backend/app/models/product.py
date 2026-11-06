@@ -98,6 +98,15 @@ class Product(Base):
         index=True,
     )
 
+    # Arama indeksi: ad + aciklama + kategori adi, Turkce karakterler
+    # translitere edilip kucuk harfe cevrilerek duz metin olarak tutulur.
+    # Vitrin aramasi bu kolon uzerinden yapilir (accent-insensitive arama).
+    search_text: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        index=True,
+    )
+
     category: Mapped["Category | None"] = relationship(
         back_populates="products",
     )

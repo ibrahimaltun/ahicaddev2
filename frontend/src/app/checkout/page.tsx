@@ -9,6 +9,7 @@ import { Field, Input, Textarea } from "@/components/ui/form";
 import { Notice } from "@/components/ui/notice";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCart } from "@/features/cart/CartProvider";
+import { hasCartProblem } from "@/features/cart/types";
 import { useI18n } from "@/features/i18n/LocaleProvider";
 import { createOrder } from "@/features/orders/api";
 
@@ -59,6 +60,12 @@ export default function CheckoutPage() {
     ) {
         event.preventDefault();
         setError(null);
+
+        if (hasCartProblem(items)) {
+            setError(t("checkout.blockedUnavailable"));
+
+            return;
+        }
 
         const shippingFullName =
             form.shipping_full_name.trim() || accountFullName;
@@ -153,6 +160,11 @@ export default function CheckoutPage() {
         0,
     );
 
+    // Proaktif sepet uyarisi: pasif/onay geri alinmis ya da stokta
+    // olmayan urunlerle siparis olusturma denemesi 400/409 ile reddedilir;
+    // burada on cagri uyarisi gosterip siparisi engelliyoruz.
+    const cartHasProblem = hasCartProblem(items);
+
     return (
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
             <p className="text-sm font-medium text-foreground-subtle">
@@ -162,6 +174,20 @@ export default function CheckoutPage() {
             <h1 className="mt-2 text-4xl font-semibold tracking-tight">
                 {t("checkout.title")}
             </h1>
+
+            {cartHasProblem && (
+                <div className="mt-6">
+                    <Notice tone="warning" role="alert">
+                        {t("checkout.blockedUnavailable")}{" "}
+                        <Link
+                            href="/cart"
+                            className="font-semibold underline underline-offset-4"
+                        >
+                            {t("checkout.backToCart")}
+                        </Link>
+                    </Notice>
+                </div>
+            )}
 
             <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_360px]">
                 <form onSubmit={handleSubmit} className="space-y-10">
@@ -304,7 +330,7 @@ export default function CheckoutPage() {
 
                     <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || cartHasProblem}
                         className={buttonClasses("primary", "lg", "w-full")}
                     >
                         {isSubmitting

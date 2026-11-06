@@ -8,6 +8,7 @@ from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.models.cart import Cart
+    from app.models.refresh_token import RefreshToken
 
 
 class User(Base):
@@ -93,5 +94,10 @@ class User(Base):
     cart: Mapped["Cart | None"] = relationship(
         back_populates="user",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user",
         cascade="all, delete-orphan",
     )

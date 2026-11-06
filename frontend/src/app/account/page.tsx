@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/form";
 import { Notice } from "@/components/ui/notice";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useI18n } from "@/features/i18n/LocaleProvider";
-import { sendVerificationEmail } from "@/features/auth/api";
+import { changePassword, sendVerificationEmail } from "@/features/auth/api";
 import { getMySellerApplications } from "@/features/seller-applications/api";
 import type { SellerApplication } from "@/features/seller-applications/types";
 
@@ -27,6 +28,53 @@ export default function AccountPage() {
     const [verificationSent, setVerificationSent] = useState(false);
     const [verificationSending, setVerificationSending] = useState(false);
     const [verificationError, setVerificationError] = useState("");
+
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [passwordError, setPasswordError] = useState("");
+    const [passwordSuccess, setPasswordSuccess] = useState("");
+
+    async function handleChangePassword(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setPasswordError("");
+        setPasswordSuccess("");
+
+        if (newPassword.length < 8) {
+            setPasswordError(t("auth.passwordMinLength"));
+
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setPasswordError(t("auth.passwordMismatch"));
+
+            return;
+        }
+
+        setPasswordSaving(true);
+
+        try {
+            const result = await changePassword({
+                current_password: currentPassword,
+                new_password: newPassword,
+            });
+
+            setPasswordSuccess(result.message);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (changeError) {
+            setPasswordError(
+                changeError instanceof Error
+                    ? changeError.message
+                    : t("account.changePasswordError"),
+            );
+        } finally {
+            setPasswordSaving(false);
+        }
+    }
 
     async function handleResendVerification() {
         setVerificationError("");
@@ -318,6 +366,94 @@ export default function AccountPage() {
                             </dd>
                         </div>
                     </dl>
+                </div>
+
+                <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
+                    <h2 className="text-lg font-semibold">
+                        {t("account.changePasswordTitle")}
+                    </h2>
+
+                    <p className="mt-1 text-sm text-foreground-muted">
+                        {t("account.changePasswordDescription")}
+                    </p>
+
+                    <form
+                        onSubmit={handleChangePassword}
+                        className="mt-6 space-y-5"
+                    >
+                        <Field
+                            label={t("account.currentPassword")}
+                            htmlFor="current_password"
+                        >
+                            <Input
+                                id="current_password"
+                                type="password"
+                                autoComplete="current-password"
+                                value={currentPassword}
+                                onChange={(event) =>
+                                    setCurrentPassword(event.target.value)
+                                }
+                                required
+                            />
+                        </Field>
+
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            <Field
+                                label={t("auth.newPassword")}
+                                htmlFor="new_password"
+                            >
+                                <Input
+                                    id="new_password"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    value={newPassword}
+                                    onChange={(event) =>
+                                        setNewPassword(event.target.value)
+                                    }
+                                    required
+                                />
+                            </Field>
+
+                            <Field
+                                label={t("auth.confirmPassword")}
+                                htmlFor="confirm_password"
+                            >
+                                <Input
+                                    id="confirm_password"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    value={confirmPassword}
+                                    onChange={(event) =>
+                                        setConfirmPassword(event.target.value)
+                                    }
+                                    required
+                                />
+                            </Field>
+                        </div>
+
+                        {passwordError && (
+                            <Notice tone="error" role="alert">
+                                {passwordError}
+                            </Notice>
+                        )}
+
+                        {passwordSuccess && (
+                            <Notice tone="success" role="status">
+                                {passwordSuccess}
+                            </Notice>
+                        )}
+
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            size="md"
+                            disabled={passwordSaving}
+                        >
+                            {passwordSaving
+                                ? t("account.changePasswordSaving")
+                                : t("account.changePasswordButton")}
+                        </Button>
+                    </form>
                 </div>
             </div>
         </main>

@@ -281,6 +281,25 @@ def test_admin_reject_with_note(admin, customer):
     assert res.status_code == 409
 
 
+def test_admin_seller_applications_pagination_and_total(admin):
+    for index in range(3):
+        applicant = make_customer(f"basvuru{index}@example.com")
+        submit_seller_application(applicant)
+
+    res = admin.get(f"{API}/seller-applications/admin", params={"limit": 2})
+    assert res.status_code == 200
+    assert len(res.json()) == 2
+    assert res.headers.get("x-total-count") == "3"
+
+    res = admin.get(
+        f"{API}/seller-applications/admin",
+        params={"status": "pending", "limit": 2, "page": 2},
+    )
+    assert res.status_code == 200
+    assert len(res.json()) == 1
+    assert res.headers.get("x-total-count") == "3"
+
+
 # --- Harici katalog aktarimi ---
 
 

@@ -11,7 +11,10 @@ import {
     updateOrderStatus,
 } from "@/features/admin/api";
 import type { AdminOrder } from "@/features/admin/types";
-import type { OrderStatus } from "@/features/orders/types";
+import {
+    allowedStatusesFor,
+    type OrderStatus,
+} from "@/features/orders/types";
 
 const STATUS_FILTERS: (OrderStatus | "all")[] = [
     "all",
@@ -22,15 +25,14 @@ const STATUS_FILTERS: (OrderStatus | "all")[] = [
     "cancelled",
 ];
 
-const SETTABLE_STATUSES: Exclude<
-    OrderStatus,
-    "pending_payment"
->[] = ["processing", "shipped", "delivered", "cancelled"];
+const PAGE_SIZE = 20;
 
 export function OrdersTab() {
     const { t } = useI18n();
 
     const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
     const [orders, setOrders] = useState<AdminOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
@@ -48,13 +50,15 @@ export function OrdersTab() {
             try {
                 const data = await getAdminOrders(
                     statusFilter === "all" ? undefined : statusFilter,
+                    page,
                 );
 
                 if (!cancelled) {
-                    setOrders(data);
+                    setOrders(data.items);
+                    setTotal(data.total);
                     setStatusDraft(
                         Object.fromEntries(
-                            data.map((order) => [order.id, order.status]),
+                            data.items.map((order) => [order.id, order.status]),
                         ),
                     );
                     setLoadError("");
@@ -77,11 +81,18 @@ export function OrdersTab() {
         return () => {
             cancelled = true;
         };
-    }, [statusFilter, reloadToken, t]);
+    }, [statusFilter, page, reloadToken, t]);
 
     const reload = useCallback(() => {
         setReloadToken((token) => token + 1);
     }, []);
+
+    function handleFilterChange(option: OrderStatus | "all") {
+        setStatusFilter(option);
+        setPage(1);
+    }
+
+    const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
     async function handleUpdate(orderId: number) {
         setProcessingId(orderId);
@@ -115,12 +126,12 @@ export function OrdersTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 {STATUS_FILTERS.map((option) => (
                     <button
                         key={option}
                         type="button"
-                        onClick={() => setStatusFilter(option)}
+                        onClick={() => handleFilterChange(option)}
                         className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                             statusFilter === option
                                 ? "bg-primary text-primary-foreground"
@@ -132,6 +143,12 @@ export function OrdersTab() {
                             : t(`orders.status.${option}`)}
                     </button>
                 ))}
+
+                {!loading && (
+                    <span className="ml-auto text-sm text-foreground-muted">
+                        {t("admin.orders.totalCount", { count: total })}
+                    </span>
+                )}
             </div>
 
             {actionError && (
@@ -207,11 +224,13 @@ export function OrdersTab() {
                                     className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm"
                                     aria-label={t("admin.orders.changeStatus")}
                                 >
-                                    {SETTABLE_STATUSES.map((status) => (
-                                        <option key={status} value={status}>
-                                            {t(`orders.status.${status}`)}
-                                        </option>
-                                    ))}
+                                    {allowedStatusesFor(order.status).map(
+                                        (status) => (
+                                            <option key={status} value={status}>
+                                                {t(`orders.status.${status}`)}
+                                            </option>
+                                        ),
+                                    )}
                                 </select>
 
                                 <Button
@@ -232,6 +251,34 @@ export function OrdersTab() {
                         </li>
                     ))}
                 </ul>
+            )}
+
+            {!loading && totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={page <= 1}
+                        onClick={() => setPage((current) => current - 1)}
+                    >
+                        ‹ {t("products.prevPage")}
+                    </Button>
+
+                    <span className="text-sm text-foreground-muted">
+                        {t("products.pageInfo", {
+                            page,
+                            total: totalPages,
+                        })}
+                    </span>
+
+                    <Button
+                        size="sm"
+                        disabled={page >= totalPages}
+                        onClick={() => setPage((current) => current + 1)}
+                    >
+                        {t("products.nextPage")} ›
+                    </Button>
+                </div>
             )}
         </div>
     );

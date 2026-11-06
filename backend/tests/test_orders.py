@@ -276,6 +276,153 @@ def test_payment_info_is_public(client):
     assert data["receiver"] == settings.payment_receiver
 
 
+class TestOrderStateMachine:
+    """Durum makinesi: yalnizca matriste tanimli gecisler gecerli."""
+
+    def _order_id(self, customer, admin):
+        product = create_category_and_product(admin)
+        add_to_cart(customer, product["id"], quantity=1)
+        return checkout(customer).json()["id"]
+
+    def test_invalid_forward_transitions_rejected(self, customer, admin):
+        order_id = self._order_id(customer, admin)
+
+        # pending_payment -> shipped dogrudan gecis degil.
+        res = admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "shipped"}
+        )
+        assert res.status_code == 409
+        assert "geçilemez" in res.json()["detail"]
+
+        # pending_payment -> delivered da gecersiz.
+        res = admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "delivered"}
+        )
+        assert res.status_code == 409
+
+        # Durum degismedi.
+        assert customer.get(f"{API}/orders/{order_id}").json()["status"] == "pending_payment"
+
+    def test_backward_transition_rejected(self, customer, admin):
+        order_id = self._order_id(customer, admin)
+
+        assert admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "processing"}
+        ).status_code == 200
+        assert admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "shipped"}
+        ).status_code == 200
+
+        # shipped -> processing geri gidis: gecersiz (duzeltilmis durum makinesi).
+        res = admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "processing"}
+        )
+        assert res.status_code == 409
+
+        # shipped yalnizca delivered'a gidebilir; cancelled gecersiz.
+        res = admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "cancelled"}
+        )
+        assert res.status_code == 409
+
+    def test_customer_cancel_blocked_after_shipment(self, customer, admin):
+        order_id = self._order_id(customer, admin)
+
+        admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "processing"}
+        )
+        admin.patch(
+            f"{API}/orders/{order_id}/status", json={"status": "shipped"}
+        )
+
+        res = customer.post(f"{API}/orders/{order_id}/cancel")
+
+        assert res.status_code == 409
+
+
+class TestOrderStatusEmails:
+    def _order_id(self, customer, admin):
+        product = create_category_and_product(admin)
+        add_to_cart(customer, product["id"], quantity=1)
+        return checkout(customer).json()["id"]
+
+    def _capture_emails(self, monkeypatch):
+        from app.api.v1 import orders as orders_module
+
+        sent: list[dict] = []
+
+        def fake_send(to, subject, body):
+            sent.append({"to": to, "subject": subject, "body": body})
+
+        monkeypatch.setattr(orders_module.email_service, "send", fake_send)
+        return sent
+
+    def test_transition_emails(self, customer, admin, monkeypatch):
+        sent = self._capture_emails(monkeypatch)
+
+        product = create_category_and_product(admin)
+        add_to_cart(customer, product["id"], quantity=1)
+        order_id = checkout(customer).json()["id"]
+
+        for new_status in ("processing", "shipped", "delivered"):
+            admin.patch(
+                f"{API}/orders/{order_id}/status", json={"status": new_status}
+            )
+
+        subjects = " | ".join(item["subject"] for item in sent)
+        assert "hazırlanıyor" in subjects
+        assert "kargoya verildi" in subjects
+        assert "teslim edildi" in subjects
+        assert all(item["to"] == "musteri@example.com" for item in sent)
+
+    def test_cancel_sends_email(self, customer, admin, monkeypatch):
+        sent = self._capture_emails(monkeypatch)
+
+        product = create_category_and_product(admin)
+        add_to_cart(customer, product["id"], quantity=1)
+        order_id = checkout(customer).json()["id"]
+
+        customer.post(f"{API}/orders/{order_id}/cancel")
+
+        assert any("iptal edildi" in item["subject"] for item in sent)
+
+
+class TestOrderListPagination:
+    def test_customer_orders_pagination_and_total(self, customer, admin):
+        product = create_category_and_product(admin, stock=10)
+
+        for _ in range(3):
+            add_to_cart(customer, product["id"], quantity=1)
+            checkout(customer)
+
+        res = customer.get(f"{API}/orders", params={"limit": 2})
+        assert res.status_code == 200
+        assert len(res.json()) == 2
+        assert res.headers.get("x-total-count") == "3"
+
+        res = customer.get(f"{API}/orders", params={"limit": 2, "page": 2})
+        assert res.status_code == 200
+        assert len(res.json()) == 1
+
+    def test_admin_orders_pagination_and_total(self, customer, admin):
+        product = create_category_and_product(admin, stock=10)
+
+        for _ in range(4):
+            add_to_cart(customer, product["id"], quantity=1)
+            checkout(customer)
+
+        res = admin.get(f"{API}/admin/orders", params={"limit": 3})
+        assert res.status_code == 200
+        assert len(res.json()) == 3
+        assert res.headers.get("x-total-count") == "4"
+
+        res = admin.get(f"{API}/admin/orders", params={"status": "pending_payment"})
+        assert res.headers.get("x-total-count") == "4"
+
+        res = admin.get(f"{API}/admin/orders", params={"status": "cancelled"})
+        assert res.headers.get("x-total-count") == "0"
+
+
 def test_clear_cart(customer, admin):
     product = create_category_and_product(admin)
     add_to_cart(customer, product["id"], quantity=2)

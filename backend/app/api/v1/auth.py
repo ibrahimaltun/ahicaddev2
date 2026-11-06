@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
+from sqlalchemy import update as sa_update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -16,8 +17,9 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import get_db
-from app.models import User
+from app.models import User, RefreshToken
 from app.schemas.auth import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
@@ -43,6 +45,12 @@ RATE_LIMIT_FORGOT_EMAIL_PER_MINUTE = 3
 RATE_LIMIT_RESET_PER_MINUTE = 5
 RATE_LIMIT_VERIFY_PER_MINUTE = 10
 RATE_LIMIT_SEND_VERIFICATION_PER_MINUTE = 5
+RATE_LIMIT_REFRESH_PER_MINUTE = 30
+RATE_LIMIT_CHANGE_PASSWORD_PER_MINUTE = 5
+
+REFRESH_COOKIE = "refresh_token"
+# Cookie yalnizca yenileme/cikis ucina gonderilir; diger isteklere sizmaz.
+REFRESH_COOKIE_PATH = "/api/v1/auth"
 
 
 def _hash_token(token: str) -> str:
@@ -81,6 +89,69 @@ def _send_verification_email(user: User, token: str) -> None:
             f"{link}\n\n"
             "Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz."
         ),
+    )
+
+
+def _set_session_cookies(response: Response, access_token: str) -> None:
+    """Erisim + yenileme cookie'lerini ayarlar (yenileme cookie'si dar path'li)."""
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60,
+    )
+
+
+def _issue_refresh_session(db: Session, user: User, response: Response) -> None:
+    """Yeni refresh token uretir (DB'de sha256 ozeti) ve cookie olarak yazar."""
+    raw_token = secrets.token_urlsafe(48)
+    expires_at = datetime.utcnow() + timedelta(
+        days=settings.refresh_token_expire_days,
+    )
+
+    db.add(
+        RefreshToken(
+            user_id=user.id,
+            token_hash=_hash_token(raw_token),
+            expires_at=expires_at,
+        )
+    )
+    db.commit()
+
+    response.set_cookie(
+        key=REFRESH_COOKIE,
+        value=raw_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        path=REFRESH_COOKIE_PATH,
+    )
+
+
+def _revoke_all_refresh_tokens(db: Session, user_id: int) -> None:
+    """Kullanicinin tum aktif yenileme tokenlarini iptal eder."""
+    now = datetime.utcnow()
+
+    db.execute(
+        sa_update(RefreshToken)
+        .where(
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+
+
+def _find_active_refresh_token(db: Session, raw_token: str) -> RefreshToken | None:
+    return db.scalar(
+        select(RefreshToken).where(
+            RefreshToken.token_hash == _hash_token(raw_token),
+            RefreshToken.revoked_at.is_(None),
+            RefreshToken.expires_at > datetime.utcnow(),
+        )
     )
 
 
@@ -181,14 +252,11 @@ def login(
         role=user.role,
     )
 
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60,
-    )
+    _set_session_cookies(response, token)
+
+    # Uzun omurlu oturum: erisim tokeni 30 dk, yenileme tokeni N gun.
+    # Erisim tokeni doldugunda istemci /auth/refresh ile sessizce devam eder.
+    _issue_refresh_session(db, user, response)
 
     return {
         "message": "Giriş başarılı",
@@ -197,13 +265,92 @@ def login(
 
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(
+    response: Response,
+    db: Session = Depends(get_db),
+    refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
+):
+    if refresh_token:
+        token_row = db.scalar(
+            select(RefreshToken).where(
+                RefreshToken.token_hash == _hash_token(refresh_token),
+                RefreshToken.revoked_at.is_(None),
+            )
+        )
+
+        if token_row is not None:
+            token_row.revoked_at = datetime.utcnow()
+            db.commit()
+
     response.delete_cookie(
         key="access_token",
     )
 
+    response.delete_cookie(
+        key=REFRESH_COOKIE,
+        path=REFRESH_COOKIE_PATH,
+    )
+
     return {
         "message": "Çıkış başarılı",
+    }
+
+
+@router.post("/refresh")
+def refresh_session(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
+):
+    """Erisim tokeni doldugunda sessiz oturum yenileme (token rotasyonlu).
+
+    Kullanilan yenileme tokeni iptal edilir ve yenisini uretilir; boylece
+    calinan bir token tek kullanima mahsus kalir.
+    """
+    limiter.check(
+        f"refresh:{get_client_ip(request)}",
+        RATE_LIMIT_REFRESH_PER_MINUTE,
+        60,
+    )
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Oturum yenileme bilgisi bulunamadı.",
+        )
+
+    token_row = _find_active_refresh_token(db, refresh_token)
+
+    if token_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Oturum süresi dolmuş. Lütfen tekrar giriş yapın.",
+        )
+
+    user = db.get(User, token_row.user_id)
+
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Kullanıcı bulunamadı veya hesap aktif değil.",
+        )
+
+    # Rotasyon: eski tokeni iptal et, yenisini uret.
+    token_row.revoked_at = datetime.utcnow()
+    db.commit()
+
+    access_token = create_access_token(
+        user_id=user.id,
+        role=user.role,
+    )
+
+    _set_session_cookies(response, access_token)
+    _issue_refresh_session(db, user, response)
+
+    return {
+        "message": "Oturum yenilendi",
+        "user": UserResponse.model_validate(user),
     }
 
 
@@ -235,6 +382,75 @@ def get_current_user(
         )
 
     return user
+
+
+@router.post(
+    "/change-password",
+    response_model=MessageResponse,
+    dependencies=[
+        Depends(
+            rate_limit(
+                scope="change-password",
+                limit=RATE_LIMIT_CHANGE_PASSWORD_PER_MINUTE,
+                window_seconds=60,
+            ),
+        ),
+    ],
+)
+def change_password(
+    data: ChangePasswordRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mevcut şifreniz hatalı.",
+        )
+
+    if verify_password(data.new_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Yeni şifre mevcut şifreyle aynı olamaz.",
+        )
+
+    current_user.password_hash = hash_password(data.new_password)
+
+    # Sifre degisince diger tum oturumlar (yenileme tokenlari) iptal edilir;
+    # bu istemde yeni tokenlar uretilerek mevcut oturum saglikli kalir.
+    _revoke_all_refresh_tokens(db, current_user.id)
+    db.commit()
+
+    access_token = create_access_token(
+        user_id=current_user.id,
+        role=current_user.role,
+    )
+
+    _set_session_cookies(response, access_token)
+    _issue_refresh_session(db, current_user, response)
+
+    try:
+        email_service.send(
+            to=current_user.email,
+            subject="Ahicadde - Şifreniz değiştirildi",
+            body=(
+                "Merhaba,\n\n"
+                "Ahicadde hesabınızın şifresi az önce değiştirildi.\n\n"
+                "Bu değişikliği siz yapmadıysanız derhal "
+                "'Şifremi unuttum' akışıyla şifrenizi sıfırlayın ve "
+                "hesabınızı kontrol edin."
+            ),
+        )
+    except Exception:
+        logger.exception(
+            "Sifre degisikligi e-postasi gonderilemedi (%s)",
+            current_user.email,
+        )
+
+    return {
+        "message": "Şifreniz güncellendi. Diğer oturumlarınız kapatıldı.",
+    }
 
 
 @router.get(
@@ -359,6 +575,9 @@ def reset_password(
     user.password_hash = hash_password(data.new_password)
     user.reset_token = None
     user.reset_token_expires = None
+
+    # Sifre sifirlama, calinan olasi oturumlari da dusurur.
+    _revoke_all_refresh_tokens(db, user.id)
     db.commit()
 
     return {
