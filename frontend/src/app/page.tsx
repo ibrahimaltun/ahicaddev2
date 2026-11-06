@@ -266,24 +266,6 @@ export default async function Home() {
                                 {t("home.ctaSeller")}
                             </Link>
                         </div>
-
-                        {/* Guven maddeleri: kahraman bolumunde ozet */}
-                        <ul className="mt-8 grid gap-3 sm:grid-cols-3">
-                            <li className="flex items-center gap-2 text-sm font-medium text-foreground-muted">
-                                <TrustIcon />
-                                {t("home.trust1Title")}
-                            </li>
-
-                            <li className="flex items-center gap-2 text-sm font-medium text-foreground-muted">
-                                <TrustIcon />
-                                {t("home.trust2Title")}
-                            </li>
-
-                            <li className="flex items-center gap-2 text-sm font-medium text-foreground-muted">
-                                <TrustIcon />
-                                {t("home.trust3Title")}
-                            </li>
-                        </ul>
                     </div>
 
                     {/* Urun koleji: vitrindekilerden canli gorsel dokus */}
@@ -512,9 +494,15 @@ export default async function Home() {
 
                         <div
                             aria-hidden="true"
-                            className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-primary text-4xl font-bold text-primary-foreground shadow-md"
+                            className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-surface shadow-md ring-1 ring-border"
                         >
-                            A
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src="/favicon.ico"
+                                alt=""
+                                className="h-16 w-16"
+                                loading="lazy"
+                            />
                         </div>
                     </div>
                 </div>
@@ -548,14 +536,17 @@ export default async function Home() {
                         <div className="flex flex-wrap items-center gap-3">
                             <Link
                                 href="/satici-ol"
-                                className={buttonClasses("secondary", "lg")}
+                                className={buttonClasses("on-primary", "lg")}
                             >
                                 {t("home.ctaSeller")}
                             </Link>
 
                             <Link
                                 href="/urun-ekle"
-                                className="rounded-xl border border-primary-foreground/50 px-6 py-3 text-base font-medium text-primary-foreground transition-colors hover:bg-primary-foreground/10"
+                                className={buttonClasses(
+                                    "on-primary-outline",
+                                    "lg",
+                                )}
                             >
                                 {t("home.addProductCta")}
                             </Link>

@@ -21,13 +21,14 @@
     --border: #e5e2df;
     --border-strong: #cfcac5;
 
-    /* Marka: toprak kiremit (terracotta) */
-    --primary: #9a3412;
-    --primary-hover: #7c2d12;
+    /* Marka: cinimavisi / ahilik mavisi (favicon roseti ile ayni aile).
+       Kontrast ciftleri AA: beyaz metin #3f6386 uzerinde ~6.3:1. */
+    --primary: #3f6386;
+    --primary-hover: #2f506e;
     --primary-foreground: #ffffff;
-    --primary-soft: #f9e3d4;
-    --primary-soft-hover: #f3d3bc;
-    --primary-soft-foreground: #7c2d12;
+    --primary-soft: #e3edf5;
+    --primary-soft-hover: #d3e3f2;
+    --primary-soft-foreground: #2f506e;
 
     --success-solid: #15803d;
     --success-solid-hover: #166534;
@@ -47,7 +48,7 @@
     --info-bg: #e9effd;
     --info-border: #c4d3f7;
 
-    --ring: #c2410c;
+    --ring: #4a7196;
 
     --header-bg: rgba(255, 255, 255, 0.88);
     --footer-bg: #201c19;
@@ -76,12 +77,12 @@
     --border: #2c2825;
     --border-strong: #4a443f;
 
-    --primary: #c2410c;
-    --primary-hover: #9a3412;
+    --primary: #44759e;
+    --primary-hover: #3b658a;
     --primary-foreground: #ffffff;
-    --primary-soft: #38200f;
-    --primary-soft-hover: #482913;
-    --primary-soft-foreground: #fcb98a;
+    --primary-soft: #17293a;
+    --primary-soft-hover: #1d3448;
+    --primary-soft-foreground: #a9c9e6;
 
     --success-solid: #15803d;
     --success-solid-hover: #166534;
@@ -101,7 +102,7 @@
     --info-bg: #131f38;
     --info-border: #27406b;
 
-    --ring: #ea580c;
+    --ring: #6f9cc4;
 
     --header-bg: rgba(13, 11, 10, 0.88);
     --footer-bg: #141110;

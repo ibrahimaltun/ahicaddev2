@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-label="Sirke">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a16207"/>
+      <stop offset="1" stop-color="#713f12"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <circle cx="97" cy="119" r="193" fill="#ffffff" opacity="0.08"/>
+  <circle cx="489" cy="535" r="240" fill="#ffffff" opacity="0.06"/>
+  <circle cx="600" cy="60" r="280" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="6"/>
+  <circle cx="40" cy="590" r="330" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="4"/>
+  <text x="50%" y="50%" dy="0.36em" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="230" font-weight="700" fill="#ffffff" opacity="0.92">S</text>
+</svg>

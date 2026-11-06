@@ -7,22 +7,30 @@ export type ButtonVariant =
     | "ghost"
     | "danger"
     | "danger-outline"
-    | "success";
+    | "success"
+    | "on-primary"
+    | "on-primary-outline";
 
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-    // Kiremit kirmizisi zemin + beyaz yazi (AA uyumlu kontrast cifti)
+    // Marka mavisi zemin + beyaz yazi (AA uyumlu kontrast cifti)
     primary:
-        "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover active:bg-primary-hover",
+        "bg-primary text-primary-foreground shadow-sm ring-1 ring-inset ring-white/15 hover:bg-primary-hover active:bg-primary-hover",
     secondary:
-        "bg-surface text-foreground border border-border-strong hover:bg-surface-2",
+        "bg-surface text-foreground border border-border-strong shadow-sm hover:bg-surface-2",
     soft: "bg-primary-soft text-primary-soft-foreground hover:bg-primary-soft-hover",
     ghost: "text-foreground-muted hover:bg-surface-2 hover:text-foreground",
     danger: "bg-danger-solid text-white shadow-sm hover:bg-danger-solid-hover",
     "danger-outline":
         "border border-danger-border bg-danger-bg/40 text-danger-fg hover:bg-danger-bg",
     success: "bg-success-solid text-white shadow-sm hover:bg-success-solid-hover",
+    // Renkli bantlar (bg-primary) uzerinde her kosulda okunur butonlar:
+    // beyaz zemin + marka renginde yazi, metin bagimsiz olarak okunur.
+    "on-primary":
+        "bg-white text-primary shadow-sm hover:bg-white/90 active:bg-white/80",
+    "on-primary-outline":
+        "border border-white/70 text-white hover:bg-white/10 active:bg-white/20",
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

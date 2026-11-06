@@ -666,6 +666,78 @@ eşleşir.
   sonradan değiştirilirse ürünün arama metni bir sonraki ürün
   güncellemesinde tazelenir (bilinen, belgelenmiş sınırlama).
 
+---
+
+## 14. EK — Ana sayfa görsel yenilemesi + vitrin/demo verisi (14 Kasım 2026)
+
+### 14.1 Buton/alan renk sistemi (kontrast yenilemesi)
+
+- **Palet marka rengi değişti:** Ana buton rengi (kiremit `#9a3412`) favicon
+  (Ahilik yıldız gülü) ile uyumlu **çini mavisi** tonlarına taşındı; tüm site
+  tek noktadan (`frontend/src/app/globals.css`) yenilenir:
+  - Açık mod: `--primary #3f6386`, hover `#2f506e`, soft `#e3edf5`
+  - Koyu mod: `--primary #44759e`, hover `#3b658a`, soft `#17293a`
+  - `--ring` her iki modda maviye alındı (`#4a7196` / `#6f9cc4`).
+  - Beyaz metin / `#3f6386` zemine karşı ~6.3:1 (AA).
+- `components/ui/button.tsx`: iki yeni yüksek kontrastlı varyant eklendi:
+  - `on-primary` (renkli bant üzerinde **beyaz zemin + marka renginde metin**;
+    "Satıcı Ol" butonunda metin görünmeme sorunu bu bantta tamamen giderildi),
+  - `on-primary-outline` (renkli bantta beyaz kontur + beyaz metin).
+  - `primary` varyanta ince iç ring (`ring-white/15`), `secondary`'ye hafif
+    gölge eklendi; her iki modda da net görünürlük sağlandı.
+
+### 14.2 Ana sayfa düzeni
+
+- Hero'daki **açıklamasız güven madde listesi** ("Güvenli alışveriş / Satıcı
+  emeği korunur / Dayanışmayla büyür" başlıkları) kaldırıldı; bu üçlü artık
+  yalnızca sayfanın ortasındaki **açıklamalı avantaj şeridinde** tek yerde
+  görünüyor.
+- "Ahicadde · Ahilik" bandındaki büyük **"A" harfli daire** kaldırıldı; yerine
+  favicon (Ahilik yıldız gülü) gösterim kutusu yerleştirildi.
+- **Header:** en soldaki kırmızı kare/daire işareti kaldırıldı; "Ahicadde"
+  metninin solunda artık **favicon görseli** duruyor.
+
+### 14.3 Örnek kategoriler + sahte vitrin ürünleri (veritabanı)
+
+- **Kategoriler:** `El Sanatları`, `Yöresel Gıda`, `Tekstil & Dokuma`,
+  `Doğal Kozmetik`, `Takı & Aksesuar`, `Ev & Yaşam` (slug bazlı idempotent;
+  ürün ekleme formunun Kategori seçimi bu listeyi `/api/v1/categories`
+  üzerinden alır).
+- **Ürünler:** 20 gerçekçi Türkçe ürün (çini tabak, kil testi, dövme bakır
+  cezve, çiçek balı, Uşak halısı, defne sabunu, gümüş kupe vb.), 6 kategoriye
+  dağıtılmış. Tümü:
+  - `is_sample=True` → kartlarda "Örnek ürün" rozeti + ana sayfa notu,
+  - `stock=0` → **"Stokta yok" (Tükendi)** rozeti; sepete eklenemez,
+  - `status='approved'`, `is_active=True`, tek birincil görsel.
+- **Görseller:** `frontend/public/demo/*.svg` (20 adet) —
+  `backend/scripts/generate_demo_images.py` ile üretilen, harici servis
+  gerektirmeyen (offline çalışan) yerel SVG'ler; `image_url=/demo/<slug>.svg`
+  olarak saklanır.
+- **Script:** `backend/scripts/seed_demo.py` — slug bazlı idempotent (var olan
+  kayıtları atlar, üzerine yazmaz); `search_text` aksan-duyarsız arama
+  kurallarıyla doldurulur (`app.services.search_text.build_search_text`).
+
+### 14.4 Yerel geliştirme veritabanı (ortam değişikliği)
+
+- Sistem PostgreSQL servisi 5432'yi (ve sistem Redis 6379'u) işgal ettiği için
+  `compose.override.yaml` eklendi: compose Postgres → `127.0.0.1:5435`, Redis →
+  `127.0.0.1:6380`.
+- Kök `.env` güncellendi: `DATABASE_URL=...@localhost:5435/ahicadde`,
+  `REDIS_URL=redis://localhost:6380/0`.
+- `alembic upgrade head` compose Postgres 17 üzerinde çalıştırıldı; tek head
+  `d5e6f7a8b9c0`, 12 tablo doğrulandı.
+
+### Doğrulama (14)
+
+| Kontrol | Sonuç |
+|---|---|
+| `alembic upgrade head` (compose pg17, 127.0.0.1:5435) | ✅ tek head `d5e6f7a8b9c0`, 12 tablo |
+| `seed_demo.py` (idempotent tekrar çalıştırma) | ✅ 6 kategori + 20 ürün; tekrar çalıştırmada "zaten var, atlandı" |
+| `pytest tests/` | ✅ **146 passed** |
+| `npx tsc --noEmit` / `npm run lint` | ✅ temiz (0 hata) |
+| `npm run build` | ✅ başarılı |
+| Canlı duman: backend `:8010` + frontend `:3311` | ✅ `/api/v1/categories` 6 kayıt; `/api/v1/products` 20 ürün (`is_sample=true`, `stock=0`); ana sayfada ürün kartları, "Örnek ürün"+"Stokta yok" rozetleri, favicon (header+bant), tek güven şeridi, `on-primary` bant butonları; aksan duyarsız arama (`?q=suzme` → "Süzme Bal") |
+
 
 
 

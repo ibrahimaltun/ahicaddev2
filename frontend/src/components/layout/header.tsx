@@ -109,9 +109,12 @@ export function Header() {
                     className="flex shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-foreground"
                     aria-label="Ahicadde ana sayfa"
                 >
-                    <span
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/favicon.ico"
+                        alt=""
                         aria-hidden="true"
-                        className="inline-block h-7 w-7 rounded-lg bg-primary text-primary-foreground"
+                        className="h-7 w-7 shrink-0"
                     />
                     Ahicadde
                 </Link>

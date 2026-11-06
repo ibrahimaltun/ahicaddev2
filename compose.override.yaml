@@ -1,0 +1,10 @@
+# Yerel gelistirme override'u: sistem servisi 5432/6379 kullandigi icin
+# compose servisleri baska host portlarina alinir (root .env ile uyumlu).
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5435:5432"
+
+  redis:
+    ports: !override
+      - "127.0.0.1:6380:6379"
