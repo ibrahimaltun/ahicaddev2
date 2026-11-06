@@ -182,6 +182,13 @@ export function Header() {
                                 {user?.first_name || t("header.myAccount")}
                             </Link>
 
+                            <Link
+                                href="/urun-ekle"
+                                className="hidden rounded-full border border-primary-soft bg-primary-soft px-4 py-2 text-sm font-semibold text-primary-soft-foreground transition-colors hover:bg-primary-soft-hover sm:inline-flex"
+                            >
+                                {t("header.addProduct")}
+                            </Link>
+
                             {isAdmin && (
                                 <Link
                                     href="/admin"
@@ -267,6 +274,22 @@ export function Header() {
                                     className="rounded-xl px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
                                 >
                                     {user?.first_name || t("header.myAccount")}
+                                </Link>
+
+                                <Link
+                                    href="/urun-ekle"
+                                    onClick={closeMobileMenu}
+                                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
+                                >
+                                    {t("header.addProduct")}
+                                </Link>
+
+                                <Link
+                                    href="/urunlerim"
+                                    onClick={closeMobileMenu}
+                                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
+                                >
+                                    {t("myProducts.title")}
                                 </Link>
 
                                 {isAdmin && (

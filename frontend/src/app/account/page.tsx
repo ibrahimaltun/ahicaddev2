@@ -112,6 +112,44 @@ export default function AccountPage() {
                     {t("account.welcome", { name: user.first_name })}
                 </h1>
 
+                {/* Hizli islemler: urun girisi akisina kisayollar */}
+                <section
+                    aria-label={t("account.quickActionsTitle")}
+                    className="mt-8 rounded-2xl border border-border bg-surface p-6"
+                >
+                    <h2 className="text-lg font-semibold">
+                        {t("account.quickActionsTitle")}
+                    </h2>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <Link
+                            href="/urun-ekle"
+                            className="rounded-xl border border-primary-soft bg-primary-soft p-4 transition-colors hover:bg-primary-soft-hover"
+                        >
+                            <span className="block font-semibold text-primary-soft-foreground">
+                                {t("account.addProductTitle")}
+                            </span>
+
+                            <span className="mt-1 block text-sm text-primary-soft-foreground/90">
+                                {t("account.addProductDescription")}
+                            </span>
+                        </Link>
+
+                        <Link
+                            href="/urunlerim"
+                            className="rounded-xl border border-border bg-surface-2 p-4 transition-colors hover:bg-surface-3"
+                        >
+                            <span className="block font-semibold text-foreground">
+                                {t("account.myProductsTitle")}
+                            </span>
+
+                            <span className="mt-1 block text-sm text-foreground-muted">
+                                {t("account.myProductsDescription")}
+                            </span>
+                        </Link>
+                    </div>
+                </section>
+
                 <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
                     <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-foreground-muted">

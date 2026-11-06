@@ -375,6 +375,75 @@ frontend'e üç yeni sayfa + hesabım doğrulama kartı geldi.
 | Canlı: `/sitemap.xml` | ✅ 30 ürün + kategori URL'leri; `/robots.txt`, `/opengraph-image`, 404 sayfası |
 | Smoke sonrası | uvicorn+next durduruldu, `ahicadde-smoke-pg` silindi |
 
+## 11. Addendum — Hepsiburada Tarzı Ana Sayfa, Müşteri Ürün Girişi + 5 dk Otomatik Onay (2026-11-06)
+
+### Ana sayfa yeniden tasarımı (hepsiburada.com düzeni, Ahicadde renk tokenlarıyla)
+- Kahraman bant sıkılaştırıldı: Ahilik mesajı (eyebrow / H1 / açıklama) **aynen
+  korunarak** kompakt hero + CTA'lar + güven maddeleri; sağda vitrin ürünlerinden
+  canlı görsel kolesi (yalnızca lg, aria-hidden).
+- Yeni e-ticaret bolumleri: avantaj/güven şeridi, renkli kategori kartları
+  (token çiftleri: primary-soft / info / success / warning), **"Günün Fırsatları"**
+  yatay snap kaydırmalı ürün seridi + Fırsat rozeti, ürün bloklarının arasına
+  **Ahilik kültür bandı** (kültür paragrafı aynen + `/ahilik` CTA), "Vitrine Yeni
+  Eklenenler" ve "Popüler Ürünler" gridleri (mobil 2 / lg 4 kolon), satıcı +
+  ürün ekleme bandı, değerler ve tam Ahilik kültür metni sonda; boş vitrin durumu.
+- SEO: WebSite + Organization korunup **ItemList JSON-LD** eklendi (öne çıkan
+  8 ürün: ListItem → Product + Offer/TRY); canonical/OG metadata korundu.
+- Renk tutarlılığı: tüm yeni bölümler yalnızca `globals.css` tasarım
+  tokenlarını kullanır (ham hex yok); açık/koyu mod aynı tokenlarla çalışır.
+
+### Müşteri ürün girişi + onay akışı (backend)
+- Migration `b1c2d3e4f5a6`: `products.status` (`pending|approved|rejected`,
+  default `approved`), `products.owner_user_id` (users FK), `products.submitted_at`
+  + `ix_products_status` / `ix_products_owner_user_id`.
+- `POST /api/v1/products/submissions` (giriş zorunlu): başlangıç seviyesi
+  kontroller — ad 3–255 (bosluk sonrası), açıklama 10–5000, fiyat 0<p≤10.000.000,
+  stok 0≤s≤1.000.000, kategori zorunlu + varlık kontrolü, opsiyonel http(s)
+  görsel URL → `ProductImage(is_primary=True)`. Slug sunucuda Türkçe harf
+  eşlemeli `_slugify` + çakışmada `-2/-3` soneki ile üretilir. Kullanıcı başına
+  en fazla 10 bekleyen ürün (spam önlemi). Admin kullanıcıya 400 (admin akışı
+  `POST /products`, anında `approved`).
+- `GET /api/v1/products/submissions` (girişli kullanıcı): kendi ürünleri ve
+  durumları (en yeni önce).
+- **5 dk otomatik onay (tembel iş):** `AUTO_APPROVE_MINUTES = 5`; `submitted_at ≤
+  now−5dk` olan `pending` ürünler vitrin listesi / detay / benzer ürünler /
+  ürünlerim / admin ürün listesi isteklerinde tek `UPDATE` ile `approved` olur
+  (ayrı worker gerektirmez). Süre dolana kadar `pending` ürünler vitrin
+  listesi/detay/arama/önerilerde filtrelenir; sitemap da bu listeyi kullanır.
+- Admin hazırlığı: `AdminProductResponse` + `status`/`owner_user_id`;
+  `GET /admin/products?status=pending` filtresi; panelde ürünler sekmesinde
+  "Onay bekliyor"/"Reddedildi" rozetleri (onay ekranı ileride).
+
+### Frontend
+- `/urun-ekle`: giriş korumalı form (ad, açıklama, kategori, fiyat, stok, canlı
+  görsel önizlemesi), alan bazlı TR/EN doğrulama mesajları + sunucu hata
+  gösterimi; gönderim sonrası **"Ürününüz onaya gönderildi ✓"** ekranı (ürün
+  özeti + 5 dk notu + Ürünlerim / Ana sayfa bağlantıları). `noindex` layout.
+- `/urunlerim`: durum rozetli liste (Onay bekliyor — amber; Onaylandı — yeşil +
+  ürün bağlantısı; Reddedildi — kırmızı), "≈5 dk içinde otomatik onaylanır"
+  notu, Yenile butonu, boş durum CTA'sı. `noindex` layout.
+- Hesap sayfasına "Hızlı İşlemler" (Ürün Ekle / Ürünlerim), header'a (desktop +
+  mobil menü) "Ürün Ekle", mobil menüye "Ürünlerim" bağlantıları; TR/EN sözlük
+  anahtarları (home / addProduct / myProducts / account / header / admin)
+  parity ile eklendi.
+
+### Doğrulama
+| Kontrol | Sonuç |
+|---|---|
+| `pytest tests/` | ✅ 108 passed (99 eski + 9 yeni: form doğrulamaları, pending gizliliği, 5 dk otomatik onay, kullanıcı limiti, admin durum filtresi, admin ürünü anında approved) |
+| `alembic upgrade head` (5433 Postgres) | ✅ head `b1c2d3e4f5a6` |
+| `npx tsc --noEmit` / `npm run lint` / `npm run build` | ✅ 0 hata / 0 problem / 27 rota (+ `/urun-ekle`, `/urunlerim`, ikisi de noindex) |
+| Canlı: müşteri girişi → `POST /products/submissions` | ✅ 201, `status=pending`, TR slug `el-yapimi-seramik-vazo`, görsel kaydedildi |
+| Canlı: pending vitrinde gizli | ✅ liste boş, detay 404; `/products/submissions` kendi ürününü listeliyor |
+| Canlı: `submitted_at` 6 dk geriye → vitrin isteği | ✅ otomatik `approved`; listede + detay 200 + Product JSON-LD |
+| Canlı: ana sayfa (31 ürün) | ✅ tüm bloklar + ItemList (8 ListItem); `/urun-ekle`, `/urunlerim` noindex |
+| Smoke sonrası | uvicorn+next durduruldu, `ahicadde-smoke-pg` silindi |
+
+### Not (sonraki adım)
+- Admin onay ekranı eklendiğinde veri modeli değişmeden yeterli:
+  `GET /admin/products?status=pending` zaten bekleyenleri süzüyor; otomatik onay
+  `AUTO_APPROVE_MINUTES` üzerinden kapatılabilecek şekilde tek sabitte duruyor.
+
 
 
 

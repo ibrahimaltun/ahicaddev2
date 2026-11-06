@@ -231,13 +231,29 @@ export function ProductsTab() {
                                 </p>
                             </div>
 
-                            <Badge
-                                tone={product.is_active ? "success" : "neutral"}
-                            >
-                                {product.is_active
-                                    ? t("admin.products.active")
-                                    : t("admin.products.inactive")}
-                            </Badge>
+                            <div className="flex flex-col items-start gap-1.5">
+                                <Badge
+                                    tone={product.is_active ? "success" : "neutral"}
+                                >
+                                    {product.is_active
+                                        ? t("admin.products.active")
+                                        : t("admin.products.inactive")}
+                                </Badge>
+
+                                {product.status && product.status !== "approved" && (
+                                    <Badge
+                                        tone={
+                                            product.status === "pending"
+                                                ? "warning"
+                                                : "danger"
+                                        }
+                                    >
+                                        {product.status === "pending"
+                                            ? t("admin.products.pendingApproval")
+                                            : t("admin.products.rejected")}
+                                    </Badge>
+                                )}
+                            </div>
 
                             <label className="text-xs text-foreground-muted">
                                 <span className="mb-1 block">

@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.v1.auth import require_admin
+from app.api.v1.products import autoapprove_pending_products
 from app.db.session import get_db
 from app.models import Category, Product, SellerApplication, User
 from app.models.cart import Cart
@@ -201,12 +202,17 @@ def update_user(
 def list_products(
     search: str | None = None,
     category_id: int | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
     page: int = 1,
     limit: int = 50,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
     page, limit = _clamp_pagination(page, limit)
+
+    # Sureyi gecen musteri urunlerini once otomatik onaya al (admin onay
+    # ekranina gecene kadar 5 dakikalik otomatik onay akisi burada da isler).
+    autoapprove_pending_products(db)
 
     query = (
         select(Product)
@@ -226,6 +232,9 @@ def list_products(
     if category_id is not None:
         query = query.where(Product.category_id == category_id)
 
+    if status_filter:
+        query = query.where(Product.status == status_filter)
+
     products = db.scalars(query.offset((page - 1) * limit).limit(limit)).all()
 
     return [
@@ -237,6 +246,8 @@ def list_products(
             price=product.price,
             stock=product.stock,
             is_active=product.is_active,
+            status=product.status,
+            owner_user_id=product.owner_user_id,
             category_id=product.category_id,
             category_name=product.category.name if product.category else None,
             primary_image_url=product.primary_image_url,
@@ -287,6 +298,9 @@ def update_product(
     if payload.category_id is not None:
         product.category_id = payload.category_id
 
+    # Admin onay ekranina gecene kadar 5 dakikalik otomatik onay akisi isler.
+    autoapprove_pending_products(db)
+
     db.commit()
     db.refresh(product)
 
@@ -298,6 +312,8 @@ def update_product(
         price=product.price,
         stock=product.stock,
         is_active=product.is_active,
+        status=product.status,
+        owner_user_id=product.owner_user_id,
         category_id=product.category_id,
         category_name=product.category.name if product.category else None,
         primary_image_url=product.primary_image_url,

@@ -45,6 +45,8 @@ class AdminProductResponse(BaseModel):
     price: Decimal
     stock: int
     is_active: bool
+    status: str
+    owner_user_id: int | None = None
     category_id: int | None
     category_name: str | None
     primary_image_url: str | None

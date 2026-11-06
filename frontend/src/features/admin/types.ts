@@ -30,6 +30,8 @@ export interface AdminProduct {
     price: string;
     stock: number;
     is_active: boolean;
+    status?: string;
+    owner_user_id?: number | null;
     category_id: number | null;
     category_name: string | null;
     primary_image_url: string | null;

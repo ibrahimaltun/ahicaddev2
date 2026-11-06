@@ -14,6 +14,10 @@ export interface Product {
     stock: number;
     is_sample: boolean;
     is_active: boolean;
+    /** Urun giris onay akisi: pending | approved | rejected. */
+    status?: string;
+    owner_user_id?: number | null;
+    submitted_at?: string | null;
     category_id: number | null;
     brand_id: number | null;
     images: ProductImage[];
