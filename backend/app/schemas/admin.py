@@ -62,6 +62,8 @@ class AdminProductUpdate(BaseModel):
     stock: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
     category_id: int | None = None
+    # Onay akisi: admin pending urunu onaylayabilir/reddedebilir.
+    status: Literal["approved", "rejected", "pending"] | None = None
 
 
 class AdminOrderResponse(BaseModel):

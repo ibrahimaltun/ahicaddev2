@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { ProductCard } from "@/components/product/ProductCard";
 import { getProduct, getRelatedProducts } from "@/features/products/api";
+import { jsonLdHtml } from "@/lib/json-ld";
 import { getServerI18n } from "@/lib/i18n/server";
 
 import type { Metadata } from "next";
@@ -108,7 +109,7 @@ export default async function ProductPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: JSON.stringify(productJsonLd),
+                    __html: jsonLdHtml(productJsonLd),
                 }}
             />
 

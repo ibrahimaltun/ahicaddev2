@@ -2,7 +2,7 @@ import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -306,6 +306,7 @@ def list_products(
     category: str | None = None,
     q: str | None = Query(default=None, max_length=200),
     db: Session = Depends(get_db),
+    response: Response = Response(),
 ):
     if page < 1:
         page = 1
@@ -334,12 +335,26 @@ def list_products(
         query = query.where(Product.category.has(Category.slug == category))
 
     if q is not None and q.strip():
-        needle = f"%{q.strip().lower()}%"
-        query = query.where(Product.name.ilike(needle))
+        # LIKE joker karakterlerini kacir: "%", "_" ve "\" arama teriminde
+        # literal olarak aranir, aksi halde her seye eslesir.
+        needle = (
+            "%"
+            + q.strip()
+            .lower()
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_%")
+            + "%"
+        )
+        query = query.where(Product.name.ilike(needle, escape="\\"))
 
     products = db.scalars(
         query.offset(offset).limit(limit)
     ).all()
+
+    # Toplam kayit sayisi: istemci tarafindaki sayfalama icin X-Total-Count.
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    response.headers["X-Total-Count"] = str(total or 0)
 
     return products
 

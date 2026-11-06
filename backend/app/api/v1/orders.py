@@ -139,7 +139,7 @@ def create_order(
         ).all()
     }
 
-    # Önce tüm satırları doğrula; hata varsa hiçbir şey yazmadan çık.
+    # Once tum satirlari dogrula; hata varsa hicbir sey yazmadan cik.
     for item in cart_items:
         product = products.get(item.product_id)
 
@@ -148,6 +148,15 @@ def create_order(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     "Sepetinizde artık satın alınamayan ürünler var. "
+                    "Lütfen sepetinizi güncelleyin."
+                ),
+            )
+
+        if product.status != Product.STATUS_APPROVED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Sepetinizde onaylanmamış ürünler var. "
                     "Lütfen sepetinizi güncelleyin."
                 ),
             )

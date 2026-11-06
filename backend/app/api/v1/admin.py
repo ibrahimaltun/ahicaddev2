@@ -298,6 +298,9 @@ def update_product(
     if payload.category_id is not None:
         product.category_id = payload.category_id
 
+    if payload.status is not None:
+        product.status = payload.status
+
     # Admin onay ekranina gecene kadar 5 dakikalik otomatik onay akisi isler.
     autoapprove_pending_products(db)
 

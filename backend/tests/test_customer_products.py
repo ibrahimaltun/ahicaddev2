@@ -195,3 +195,128 @@ class TestCustomerProductSubmissions:
 
         detail = admin.get(f"{API}/products/admin-urunu")
         assert detail.status_code == 200
+
+
+class TestPurchasableProductGuards:
+    """Sepet/siparis yalnizca 'approved' urunleri kabul eder (guvenlik regresyonu).
+
+    Onay bekleyen ya da reddedilmis bir urunun sepete eklenip satin
+    alinabilmesi, urun girisi onay akisini bosa dusurur.
+    """
+
+    ORDER_PAYLOAD = {
+        "shipping_full_name": "Test Kullanici",
+        "shipping_phone": "05321112233",
+        "shipping_city": "Ankara",
+        "shipping_district": "Çankaya",
+        "shipping_address": "Test Mahallesi 123 Sokak No 4",
+    }
+
+    def _add_to_cart(self, client, product_id, quantity=1):
+        return client.post(
+            f"{API}/cart/items",
+            json={"product_id": product_id, "quantity": quantity},
+        )
+
+    def test_pending_product_cannot_be_added_to_cart(self, customer, admin):
+        category = _category(admin)
+        pid = _submit(customer, category["id"]).json()["id"]
+
+        res = self._add_to_cart(customer, pid)
+
+        assert res.status_code == 404
+        assert customer.get(f"{API}/cart").json()["items"] == []
+
+    def test_rejected_product_cannot_be_added_to_cart(self, customer, admin):
+        category = _category(admin)
+        res = _submit(customer, category["id"])
+        pid = res.json()["id"]
+
+        reject = admin.patch(f"{API}/admin/products/{pid}", json={"status": "rejected"})
+        assert reject.status_code == 200
+
+        res = self._add_to_cart(customer, pid)
+        assert res.status_code == 404
+
+    def test_product_turning_pending_after_cart_blocks_order(self, customer, admin):
+        category = _category(admin)
+        created = admin.post(
+            f"{API}/products",
+            json={
+                "name": "Onay Iptal Ürünü",
+                "slug": "onay-iptal-urunu",
+                "description": "Sepette beklerken pending'e cekilen urun",
+                "price": "25",
+                "stock": 5,
+                "category_id": category["id"],
+            },
+        )
+        pid = created.json()["id"]
+
+        assert self._add_to_cart(customer, pid).status_code == 201
+
+        # Urun onayı geri alindi (admin reddi simülasyonu).
+        with SessionLocal() as db:
+            product = db.get(Product, pid)
+            product.status = Product.STATUS_PENDING
+            db.commit()
+
+        res = customer.post(f"{API}/orders", json=self.ORDER_PAYLOAD)
+
+        assert res.status_code == 400
+        # Stok dusmedi.
+        with SessionLocal() as db:
+            assert db.get(Product, pid).stock == 5
+
+    def test_admin_can_approve_and_reject_product_status(self, customer, admin):
+        category = _category(admin)
+        res = _submit(customer, category["id"])
+        pid = res.json()["id"]
+        slug = res.json()["slug"]
+
+        approve = admin.patch(f"{API}/admin/products/{pid}", json={"status": "approved"})
+        assert approve.status_code == 200
+        assert approve.json()["status"] == "approved"
+
+        # Onaylanan urun vitrine cikti.
+        assert customer.get(f"{API}/products/{slug}").status_code == 200
+
+        reject = admin.patch(f"{API}/admin/products/{pid}", json={"status": "rejected"})
+        assert reject.status_code == 200
+        assert reject.json()["status"] == "rejected"
+
+        # Reddedilen urun vitrinden kalkti.
+        assert customer.get(f"{API}/products/{slug}").status_code == 404
+
+    def test_search_escapes_like_wildcards(self, customer, admin):
+        category = _category(admin)
+
+        admin.post(
+            f"{API}/products",
+            json={
+                "name": "Organik Süzme Bal",
+                "slug": "organik-suzme-bal",
+                "description": "Joker kacis arama testi",
+                "price": "80",
+                "stock": 4,
+                "category_id": category["id"],
+            },
+        )
+
+        # Joker olarak gonderilen % ve _ hicbir seyle eslesmez (literal aranir).
+        res = customer.get(f"{API}/products", params={"q": "%"})
+        assert res.status_code == 200
+        assert res.json() == []
+
+        res = customer.get(f"{API}/products", params={"q": "_rganik"})
+        assert res.status_code == 200
+        assert res.json() == []
+
+        # Duz metin aramasi ayni sekilde calisir.
+        res = customer.get(f"{API}/products", params={"q": "Organik"})
+        assert res.status_code == 200
+        assert len(res.json()) == 1
+
+        # X-Total-Count basligi sayfalama icin hazir.
+        res = customer.get(f"{API}/products", params={"page": 1, "limit": 1})
+        assert res.headers.get("x-total-count") == "1"

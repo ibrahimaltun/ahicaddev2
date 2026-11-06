@@ -4,6 +4,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { buttonClasses } from "@/components/ui/button";
 import { getCategories } from "@/features/categories/api";
 import { getProducts } from "@/features/products/api";
+import { jsonLdHtml } from "@/lib/json-ld";
 import { getServerI18n } from "@/lib/i18n/server";
 
 import type { Metadata } from "next";
@@ -222,7 +223,7 @@ export default async function Home() {
         <main className="min-h-screen bg-background text-foreground">
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_JSON_LD) }}
+                dangerouslySetInnerHTML={{ __html: jsonLdHtml(SITE_JSON_LD) }}
             />
 
             {/* ---------------------------------------------------------------------------

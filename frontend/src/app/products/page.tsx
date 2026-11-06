@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ProductCard } from "@/components/product/ProductCard";
 import { getProducts } from "@/features/products/api";
+import { jsonLdHtml } from "@/lib/json-ld";
 import { getServerI18n } from "@/lib/i18n/server";
 
 import type { Metadata } from "next";
@@ -73,7 +74,7 @@ export default async function ProductsPage({
         <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+                dangerouslySetInnerHTML={{ __html: jsonLdHtml(itemListJsonLd) }}
             />
 
             <div>

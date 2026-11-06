@@ -444,6 +444,80 @@ frontend'e üç yeni sayfa + hesabım doğrulama kartı geldi.
   `GET /admin/products?status=pending` zaten bekleyenleri süzüyor; otomatik onay
   `AUTO_APPROVE_MINUTES` üzerinden kapatılabilecek şekilde tek sabitte duruyor.
 
+## 12. Addendum — Genel Sistem Denetimi: 2 Kritik Güvenlik Düzeltmesi + Sağlamlaştırma (2026-11-06)
+
+Canlı smoke ortamı (Postgres 5433 + uvicorn 8010 + next 3311) üzerinde uçtan uca
+sistem testi yapıldı: kimlik doğrulama akışları (kayıt/doğrulama/şifre sıfırlama),
+ürün girişi doğrulamaları, sepet/sipariş akışları, admin uçları, IDOR kontrolleri,
+paralel sipariş stok yarışı, tüm frontend sayfaları. Sonuç: **113 pytest passed**
+(108 + 5 yeni regresyon), tsc/ESLint/build temiz.
+
+### Bulunan ve düzeltilen kritik hatalar
+
+1. **KRİTİK — JSON-LD saklı XSS** (`products/[slug]`, `/products`, `/` sayfaları):
+   Ürün adı/açıklaması `JSON.stringify` ile ham şekilde
+   `<script type="application/ld+json">` içine yazıldığı için, ürün adına
+   `</script><script>alert(1)</script>` yazılabilen bir müşteri ürünü her
+   ziyaretçide script çalıştırıyordu. Canlı doğrulandı.
+   **Düzeltme:** `frontend/src/lib/json-ld.ts` → `jsonLdHtml()` (`<`, `>`,
+   U+2028/U+2029 kaçışı); üç sayfa da bu yardımcıya geçirildi. Canlı doğrulandı:
+   ham form 0, kaçışlı form mevcut.
+
+2. **YÜKSEK — Onay bekleyen/reddedilmiş ürün sepete eklenip satın alınabiliyordu:**
+   `POST /cart/items` yalnızca `is_active` bakıyordu; pending ürün sepete 201
+   ile ekleniyor ve siparişe giriyordu (onay akışını bypass).
+   **Düzeltme:** `cart.py` → `_purchasable_product()` (aktif + `status=approved`);
+   `orders.py` sipariş doğrulamasına da `STATUS_APPROVED` kontrolü eklendi
+   (derinlemesine savunma). Regresyon testleri: pending sepete 404, pending
+   sipariş 400 + stok düşmez, rejected sepete 404.
+
+### Sağlamlaştırmalar (aynı iş paketinde)
+
+3. **Admin ürün durum güncellemesi:** `PATCH /admin/products/{id}` gövdesine
+   `status: approved|rejected|pending` eklendi — reddedilen ürün artık kalıcı
+   ölü değildir, admin manuel onay verebilir (onay ekranı için API hazır).
+4. **`X-Total-Count` başlığı:** `GET /products` artık toplam kayıt sayısını
+   döndürüyor (istemci sayfalaması için; şema değişikliği yok).
+5. **Arama LIKE joker kaçışı:** `q` içindeki `%`, `_`, `\` literal aranır
+   (eskiden `q=%` tüm ürünleri döndürüyordu).
+
+### Doğrulama
+| Kontrol | Sonuç |
+|---|---|
+| `pytest tests/` | ✅ 113 passed (5 yeni regresyon: sepet/sipariş status guard ×3, admin status ×1, arama kaçışı + X-Total-Count ×1) |
+| `npx tsc --noEmit` / `next lint` / `npm run build` | ✅ temiz |
+| Canlı: XSS ürün sayfası | ✅ ham `<script>` 0, `\u003cscript` kaçışı var (detay + ana sayfa + listeleme) |
+| Canlı: pending/rejected ürün sepete | ✅ 404 |
+| Canlı: admin `PATCH status rejected→approved` | ✅ 200 |
+| Canlı: `X-Total-Count` | ✅ 6 |
+| Canlı: IDOR (başkasının siparişi / status) | ✅ 404 / 403 |
+| Canlı: paralel sipariş (stok=1, 3 istemci) | ✅ 1×201, 2×409, stok 0 (oversell yok; `with_for_update` mevcut) |
+| Canlı: auth akışları (kayıt→doğrulama→şifre sıfırlama→giriş) | ✅ |
+| Canlı: 20 frontend sayfası + 404 + robots | ✅ hepsi beklendiği gibi |
+
+### Açık bulgular (önceliklendirilmiş iş paketleri — kod değişikliği bekliyor)
+- **P1:** Sipariş durum makinesi yok (`shipped → processing` geçişine izin var);
+  durum geçiş matrisi eklenmeli. İptal/teslimde e-posta bildirimi yok.
+- **P1:** Oturum: refresh token yok (30 dk'da zor çıkış) + `/auth/change-password`
+  ucu yok (sadece "şifremi unuttum" var).
+- **P2:** Rate limiter bellek-içi (çoklu proses/instance'ta yetersiz; Redis'e taşınmalı — kod
+  tek değişim noktası olarak hazır), `get_client_ip` `X-Forwarded-For`'a körü körüne
+  güveniyor (proxy arkasında değilken limiter bypass'ı mümkün).
+- **P2:** Sipariş/satıcı başvurusu listelerinde sayfalama yok; admin sipariş listesi
+  büyüdükçe yavaşlar. `/products` toplam sayısı `X-Total-Count` ile hazır, frontend
+  sayfalama UI'ı henüz kullanmıyor.
+- **P2:** Arama yalnızca ürün adında (açıklama/kategori/marka yok); Türkçe küçük/büyük
+  ve `ıiİi` dönüşümleri `ilike` ile kısmi çözülüyor (Postgres'te `unaccent`/`trigram`
+  indeksi gerekir).
+- **P2:** Sepetteki pasif/onay-geri-çekilmiş ürün siparişte 400 döner ama sepet sayfası
+  kullanıcıyı proaktif uyarmıyor (satır bazlı uyarı eklenmeli).
+- **P3:** Yapılandırma: `frontend_url` geliştirme varsayılıyor; production `.env`
+  denetimi + HTTPS zorunluluğu (cookie `secure=True` zaten) Caddy/Nginx tarafında.
+  Sitemap ISR 600 sn gecikmeli veri gösterir (bilinen davranış).
+- **P3:** Görseller harici URL (NexT Image yok); rastgele URL doğrulama sadece http(s)
+  şeması — CDN/uzunluk sınırı genişletilebilir.
+
+
 
 
 

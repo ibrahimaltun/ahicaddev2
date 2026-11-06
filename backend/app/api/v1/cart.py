@@ -17,6 +17,15 @@ router = APIRouter(
 )
 
 
+def _purchasable_product(product: Product | None) -> bool:
+    """Sepete/siparise girebilecek urun: aktif ve vitrinde (approved)."""
+    return (
+        product is not None
+        and product.is_active
+        and product.status == Product.STATUS_APPROVED
+    )
+
+
 def _get_or_create_cart(db: Session, user: User) -> Cart:
     cart = db.scalar(select(Cart).where(Cart.user_id == user.id))
 
@@ -89,7 +98,7 @@ def add_cart_item(
 
     product = db.get(Product, item_data.product_id)
 
-    if product is None or not product.is_active:
+    if not _purchasable_product(product):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found",
@@ -151,6 +160,15 @@ def update_cart_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cart item not found",
+        )
+
+    if not _purchasable_product(item.product):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Sepetinizdeki bu ürün artık satın alınamıyor. "
+                "Lütfen ürünü sepetinizden çıkarın."
+            ),
         )
 
     if item_data.quantity > item.product.stock:
