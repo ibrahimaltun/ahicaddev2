@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { AuthProvider } from "@/features/auth/hooks/AuthProvider";
@@ -103,6 +104,7 @@ export default async function RootLayout({
       </head>
 
       <body className="flex min-h-screen flex-col bg-background text-foreground">
+        <GoogleAnalytics />
         <ThemeProvider>
           <LocaleProvider initialLocale={locale}>
             <AuthProvider>

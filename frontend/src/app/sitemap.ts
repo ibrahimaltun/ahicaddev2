@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+import { BLOG_POSTS } from "@/features/blog/posts";
+import { BLOG_BASE_PATH } from "@/lib/constants";
+
 const baseUrl = "https://ahicadde.com";
 
 const API_BASE_URL =
@@ -72,6 +75,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 0.7,
         },
         {
+            url: `${baseUrl}${BLOG_BASE_PATH}`,
+            lastModified: new Date(),
+            changeFrequency: "weekly",
+            priority: 0.7,
+        },
+        {
             url: `${baseUrl}/saticilar`,
             lastModified: new Date(),
             changeFrequency: "monthly",
@@ -109,5 +118,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }),
     );
 
-    return [...staticEntries, ...productEntries, ...categoryEntries];
+    const blogEntries: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
+        url: `${baseUrl}${BLOG_BASE_PATH}/${post.slug}`,
+        lastModified: new Date(post.dateModified ?? post.date),
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+    }));
+
+    return [...staticEntries, ...blogEntries, ...productEntries, ...categoryEntries];
 }

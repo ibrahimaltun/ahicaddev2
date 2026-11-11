@@ -45,6 +45,10 @@ export function Footer() {
                             <Link href="/hizmet-ucretleri" className="transition-colors hover:text-footer-fg">
                                 {t("footer.fees")}
                             </Link>
+
+                            <Link href="/blog" className="transition-colors hover:text-footer-fg">
+                                {t("footer.blog")}
+                            </Link>
                         </nav>
                     </div>
 
