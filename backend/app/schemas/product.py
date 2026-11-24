@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ProductImageResponse(BaseModel):
@@ -39,8 +39,24 @@ class CustomerProductCreate(BaseModel):
     price: Decimal = Field(gt=0, le=Decimal("10000000"))
     stock: int = Field(default=0, ge=0, le=1000000)
     category_id: int = Field(gt=0)
-    # Opsiyonel tek gorsel; bos birakilirse urun gorselsiz vitrine cikar.
+    # Gorseller: yukleme endpoint'i (/uploads) dosyayi sunucuya kaydeder ve
+    # /api/v1/media/... URL'si dondurur; form bu URL'leri gonderir.
+    # Eski tek gorsel alanina (image_url) geri uyumluluk korunur.
     image_url: str | None = Field(default=None, max_length=500)
+    image_urls: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+
+    @field_validator("image_urls")
+    @classmethod
+    def _validate_image_urls(cls, value: list[str]) -> list[str]:
+        cleaned = [url.strip() for url in value if url and url.strip()]
+
+        if len(cleaned) != len(value):
+            raise ValueError("Görsel listesi boş öğe içeremez")
+
+        return cleaned
 
 
 class ProductResponse(BaseModel):

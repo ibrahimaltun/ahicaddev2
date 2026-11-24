@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.db.session import engine
@@ -11,6 +12,11 @@ from app.api.v1.orders import router as orders_router
 from app.api.v1.products import router as products_router
 from app.api.v1.seller_applications import router as seller_applications_router
 from app.api.v1.admin import router as admin_router
+from app.api.v1.uploads import (
+    MEDIA_PUBLIC_PREFIX,
+    resolve_uploads_root,
+    router as uploads_router,
+)
 
 app = FastAPI(
     title="Ahicadde",
@@ -51,6 +57,18 @@ app.include_router(
     admin_router,
     prefix="/api/v1",
 )
+
+app.include_router(
+    uploads_router,
+    prefix="/api/v1",
+)
+
+# Urun gorselleri: yukleme endpoint'inin yazdigi dosya dizinini statik olarak
+# sunar. /api/ oneki altinda oldugu icin Next.js rewrites ve prod reverse
+# proxy (Caddy/Nginx) istekleri dogrudan backend'e iletir.
+_uploads_root = resolve_uploads_root()
+_uploads_root.mkdir(parents=True, exist_ok=True)
+app.mount(MEDIA_PUBLIC_PREFIX, StaticFiles(directory=str(_uploads_root)), name="media")
 
 
 @app.get("/")

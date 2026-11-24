@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     payment_iban: str = "TR00 0000 0000 0000 0000 0000 0000"
     payment_receiver: str = "Ahicadde Ödemeleri"
 
+    # Urun gorselleri dosya dizininde tutulur; DB'de sadece URL saklanir.
+    # Goreceli yol verilirse backend dizinine (BASE_DIR) gore cozulur.
+    uploads_dir: str = "uploads"
+    max_upload_size_mb: int = 5
+
     # E-posta dogrulama / sifre sifirlama
     frontend_url: str = "http://localhost:3100"
     email_backend: str = "console"  # "console" | "smtp"

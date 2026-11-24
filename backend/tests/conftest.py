@@ -1,8 +1,11 @@
 import os
+import tempfile
 
 # Uygulama modülleri import edilmeden önce test ortam değişkenleri ayarlanmalı.
 os.environ["DATABASE_URL"] = "sqlite:///./ahicadde_test.db"
 os.environ["JWT_SECRET"] = "test-secret-key-for-pytest"
+# Urun gorselleri test sirasinda gecici dizine yazilsin (repo kirletilmesin).
+os.environ["UPLOADS_DIR"] = tempfile.mkdtemp(prefix="ahicadde-test-uploads-")
 
 import pytest
 from fastapi.testclient import TestClient

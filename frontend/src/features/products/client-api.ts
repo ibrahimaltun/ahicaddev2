@@ -12,6 +12,47 @@ export interface CustomerProductPayload {
     stock: number;
     category_id: number;
     image_url?: string | null;
+    /** Yüklenen gorsellerin sunucu URL'leri (/api/v1/media/...); en fazla 5. */
+    image_urls?: string[];
+}
+
+interface UploadedFile {
+    url: string;
+    file_name: string;
+    size: number;
+}
+
+/**
+ * Urun gorsellerini sunucuya yukler; her dosya icin /api/v1/media/... URL'si
+ * doner. multipart/form-data oldugu icin Content-Type basligi tarayiciya
+ * birakilir (boundary otomatik eklenir).
+ */
+export async function uploadProductImages(
+    files: File[],
+): Promise<string[]> {
+    const body = new FormData();
+
+    for (const file of files) {
+        body.append("files", file);
+    }
+
+    const response = await fetch("/api/v1/uploads", {
+        method: "POST",
+        credentials: "include",
+        body,
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => null);
+
+        throw new Error(
+            error?.detail || "Görseller yüklenirken bir hata oluştu.",
+        );
+    }
+
+    const data = (await response.json()) as { files: UploadedFile[] };
+
+    return data.files.map((file) => file.url);
 }
 
 /**

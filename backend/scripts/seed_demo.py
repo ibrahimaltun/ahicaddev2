@@ -30,6 +30,16 @@ from app.services.search_text import build_search_text  # noqa: E402
 # ---------------------------------------------------------------------------
 # Ornek kategoriler (urun girisi formu bu listeyi /categories uzerinden alir)
 # ---------------------------------------------------------------------------
+
+# Cicek & Bitki ana kategorisinin alt kategorileri (urun girisi formunun
+# 2 asamali kategori secimindeki 2. asama secenekleri).
+CICEK_BITKI_CATEGORIES: list[tuple[str, str]] = [
+    ("El Yapımı Yapay Çiçekler", "el-yapimi-yapay-cicekler"),
+    ("Buket Çiçekler", "buket-cicekler"),
+    ("Saksı Bitkileri", "saksi-bitkileri"),
+    ("Çelenk & Özel Gün", "celenk-ozel-gun"),
+]
+
 CATEGORIES: list[tuple[str, str]] = [
     ("El Sanatları", "el-sanatlari"),
     ("Yöresel Gıda", "yoresel-gida"),
@@ -37,6 +47,7 @@ CATEGORIES: list[tuple[str, str]] = [
     ("Doğal Kozmetik", "dogal-kozmetik"),
     ("Takı & Aksesuar", "taki-aksesuar"),
     ("Ev & Yaşam", "ev-yasam"),
+    *CICEK_BITKI_CATEGORIES,
 ]
 
 # (slug, ad, kategori-slug, fiyat, kisa aciklama, gorsel)

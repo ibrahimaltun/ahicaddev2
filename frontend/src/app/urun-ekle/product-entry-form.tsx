@@ -1,19 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useI18n } from "@/features/i18n/LocaleProvider";
 import { apiFetch } from "@/lib/api/client";
-import { createCustomerProduct } from "@/features/products/client-api";
+import type { TranslationKey } from "@/lib/i18n/dictionary";
+import {
+    createCustomerProduct,
+    uploadProductImages,
+} from "@/features/products/client-api";
 
 interface Category {
     id: number;
     name: string;
     slug: string;
+}
+
+interface CategoryOption {
+    /** /categories listesindeki kategori slug'i; gonderimde id'ye eslenir. */
+    slug: string;
+    nameKey: TranslationKey;
+    descriptionKey: TranslationKey;
+}
+
+interface CategoryGroup {
+    slug: string;
+    labelKey: TranslationKey;
+    helpKey: TranslationKey;
+    options: CategoryOption[];
 }
 
 interface SubmittedProduct {
@@ -23,16 +41,61 @@ interface SubmittedProduct {
     categoryName: string | null;
 }
 
+interface ImagePreview {
+    file: File;
+    url: string;
+}
+
 const MAX_PRICE = 10000000;
 const MAX_STOCK = 1000000;
+
+// Urun gorselleri: sunucuya (/uploads) yuklenir, DB'ye URL kaydedilir.
+const MAX_IMAGES = 5;
+const MAX_IMAGE_SIZE_MB = 5;
+
+/**
+ * 2 asamali kategori secimi:
+ * 1. asama -> ana kategori (grup), 2. asama -> aciklamali alt kategori.
+ * Yeni ana kategoriler bu listeye eklenerek genisletilir.
+ */
+const CATEGORY_GROUPS: CategoryGroup[] = [
+    {
+        slug: "cicek-bitki",
+        labelKey: "addProduct.categoryGroupCicekBitki",
+        helpKey: "addProduct.categoryStage1Help",
+        options: [
+            {
+                slug: "el-yapimi-yapay-cicekler",
+                nameKey: "addProduct.catElYapimiYapayCicekler",
+                descriptionKey: "addProduct.catElYapimiYapayCiceklerDesc",
+            },
+            {
+                slug: "buket-cicekler",
+                nameKey: "addProduct.catBuketCicekler",
+                descriptionKey: "addProduct.catBuketCiceklerDesc",
+            },
+            {
+                slug: "saksi-bitkileri",
+                nameKey: "addProduct.catSaksiBitkileri",
+                descriptionKey: "addProduct.catSaksiBitkileriDesc",
+            },
+            {
+                slug: "celenk-ozel-gun",
+                nameKey: "addProduct.catCelenkOzelGun",
+                descriptionKey: "addProduct.catCelenkOzelGunDesc",
+            },
+        ],
+    },
+];
 
 interface FieldErrors {
     name?: string;
     description?: string;
     price?: string;
     stock?: string;
-    category?: string;
-    imageUrl?: string;
+    categoryGroup?: string;
+    categoryItem?: string;
+    images?: string;
 }
 
 function fieldErrorClasses(hasError: boolean) {
@@ -49,15 +112,20 @@ export function ProductEntryForm() {
 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [categoryId, setCategoryId] = useState("");
+    const [categoryGroupSlug, setCategoryGroupSlug] = useState("");
+    const [categorySlug, setCategorySlug] = useState("");
     const [price, setPrice] = useState("");
     const [stock, setStock] = useState("1");
-    const [imageUrl, setImageUrl] = useState("");
+    const [imageFiles, setImageFiles] = useState<File[]>([]);
 
     const [errors, setErrors] = useState<FieldErrors>({});
+    const [imageErrors, setImageErrors] = useState<string[]>([]);
     const [formError, setFormError] = useState("");
+    const [uploadingImages, setUploadingImages] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState<SubmittedProduct | null>(null);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Kategoriler: form acildiginda bir kez cekilir.
     useEffect(() => {
@@ -82,6 +150,21 @@ export function ProductEntryForm() {
             cancelled = true;
         };
     }, [isAuthenticated]);
+
+    // Onizlemeler: dosya listesi degistiginde yeniden uretilir; eski
+    // object URL'ler cleanup'ta geri verilir (bellek sizintisi olmasin).
+    const imagePreviews = useMemo<ImagePreview[]>(
+        () => imageFiles.map((file) => ({ file, url: URL.createObjectURL(file) })),
+        [imageFiles],
+    );
+
+    useEffect(() => {
+        return () => {
+            for (const preview of imagePreviews) {
+                URL.revokeObjectURL(preview.url);
+            }
+        };
+    }, [imagePreviews]);
 
     function validate(): FieldErrors {
         const nextErrors: FieldErrors = {};
@@ -119,26 +202,78 @@ export function ProductEntryForm() {
             nextErrors.stock = t("addProduct.errStock");
         }
 
-        if (categoryId === "") {
-            nextErrors.category = t("addProduct.errCategory");
+        if (categoryGroupSlug === "") {
+            nextErrors.categoryGroup = t("addProduct.errCategoryGroup");
         }
 
-        const trimmedImage = imageUrl.trim();
-
-        if (
-            trimmedImage !== "" &&
-            !trimmedImage.toLowerCase().startsWith("http://") &&
-            !trimmedImage.toLowerCase().startsWith("https://")
-        ) {
-            nextErrors.imageUrl = t("addProduct.errImage");
+        if (categoryGroupSlug !== "" && categorySlug === "") {
+            nextErrors.categoryItem = t("addProduct.errCategoryItem");
         }
 
         return nextErrors;
     }
 
+    function handleGroupChange(nextGroupSlug: string) {
+        setCategoryGroupSlug(nextGroupSlug);
+
+        // Ana kategori degisince 2. asama secimi sifirlanir.
+        setCategorySlug("");
+    }
+
+    function handleFilesSelected(event: React.ChangeEvent<HTMLInputElement>) {
+        const selected = Array.from(event.target.files ?? []);
+
+        // Ayni dosyayi tekrar secilebilsin diye input degeri temizlenir.
+        event.target.value = "";
+
+        if (selected.length === 0) {
+            return;
+        }
+
+        const nextImageErrors: string[] = [];
+        const accepted: File[] = [];
+
+        for (const file of selected) {
+            if (imageFiles.length + accepted.length >= MAX_IMAGES) {
+                nextImageErrors.push(t("addProduct.imageMaxReached"));
+                break;
+            }
+
+            if (!file.type.toLowerCase().startsWith("image/")) {
+                nextImageErrors.push(
+                    t("addProduct.imageTypeError", { name: file.name }),
+                );
+                continue;
+            }
+
+            if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+                nextImageErrors.push(
+                    t("addProduct.imageSizeError", { name: file.name }),
+                );
+                continue;
+            }
+
+            accepted.push(file);
+        }
+
+        setImageErrors(nextImageErrors);
+
+        if (accepted.length > 0) {
+            setImageFiles((previous) => [...previous, ...accepted]);
+        }
+    }
+
+    function removeImage(index: number) {
+        setImageFiles((previous) =>
+            previous.filter((_, itemIndex) => itemIndex !== index),
+        );
+        setImageErrors([]);
+    }
+
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setFormError("");
+        setImageErrors([]);
 
         const validationErrors = validate();
 
@@ -149,27 +284,54 @@ export function ProductEntryForm() {
             return;
         }
 
+        // Alt kategori slug'ini /categories listesindeki kategoriye esle;
+        // seed calistirilmamissa kullaniciyi net sekilde yonlendir.
+        const selectedCategory = categories.find(
+            (category) => category.slug === categorySlug,
+        );
+
+        if (selectedCategory === undefined) {
+            const missingErrors: FieldErrors = {
+                ...validationErrors,
+                categoryItem: t("addProduct.errCategoryMissing"),
+            };
+
+            setErrors(missingErrors);
+            setFormError(t("addProduct.errForm"));
+            return;
+        }
+
         setSubmitting(true);
 
         try {
+            // 1) Gorseller sunucuya yuklenir, URL'leri alinir.
+            let imageUrls: string[] = [];
+
+            if (imageFiles.length > 0) {
+                setUploadingImages(true);
+
+                try {
+                    imageUrls = await uploadProductImages(imageFiles);
+                } finally {
+                    setUploadingImages(false);
+                }
+            }
+
+            // 2) Urun girisi gonderilir (ilk gorsel kapak olur).
             const product = await createCustomerProduct({
                 name: name.trim(),
                 description: description.trim(),
                 price: Number(price.replace(",", ".")),
                 stock: Number(stock),
-                category_id: Number(categoryId),
-                image_url: imageUrl.trim() === "" ? null : imageUrl.trim(),
+                category_id: selectedCategory.id,
+                image_urls: imageUrls,
             });
-
-            const selectedCategory = categories.find(
-                (category) => category.id === product.category_id,
-            );
 
             setSubmitted({
                 name: product.name,
                 price: product.price,
                 stock: product.stock,
-                categoryName: selectedCategory?.name ?? null,
+                categoryName: selectedCategory.name,
             });
         } catch (submitError) {
             setFormError(
@@ -281,6 +443,10 @@ export function ProductEntryForm() {
         );
     }
 
+    const selectedGroup = CATEGORY_GROUPS.find(
+        (group) => group.slug === categoryGroupSlug,
+    );
+
     return (
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
             {formError && (
@@ -353,42 +519,119 @@ export function ProductEntryForm() {
                 )}
             </div>
 
-            {/* Kategori */}
-            <div>
-                <label
-                    htmlFor="product-category"
-                    className="mb-2 block text-sm font-semibold"
-                >
-                    {t("addProduct.fieldCategory")}{" "}
+            {/* Kategori: 2 asama (ana kategori -> aciklamali alt kategori) */}
+            <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
+                {/* 1. Asama: ana kategori */}
+                <p className="text-sm font-semibold">
+                    {t("addProduct.categoryStage1Label")}{" "}
                     <span className="text-danger-solid">*</span>
-                </label>
+                </p>
 
-                <select
-                    id="product-category"
-                    name="category"
-                    value={categoryId}
-                    onChange={(event) => setCategoryId(event.target.value)}
-                    aria-invalid={Boolean(errors.category)}
-                    className={`w-full px-4 py-2.5 ${fieldErrorClasses(Boolean(errors.category))}`}
-                >
-                    <option value="">
-                        {t("addProduct.categoryPlaceholder")}
-                    </option>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {CATEGORY_GROUPS.map((group) => {
+                        const isSelected = group.slug === categoryGroupSlug;
 
-                    {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                            {category.name}
-                        </option>
-                    ))}
-                </select>
+                        return (
+                            <button
+                                key={group.slug}
+                                type="button"
+                                onClick={() => handleGroupChange(group.slug)}
+                                aria-pressed={isSelected}
+                                className={`rounded-xl border p-4 text-left transition ${
+                                    isSelected
+                                        ? "border-primary bg-primary-soft"
+                                        : "border-border bg-surface hover:bg-surface-2"
+                                }`}
+                            >
+                                <span className="flex items-center gap-2 font-semibold">
+                                    <span
+                                        aria-hidden
+                                        className={`inline-block h-2.5 w-2.5 rounded-full ${
+                                            isSelected
+                                                ? "bg-primary"
+                                                : "border border-border-strong bg-surface"
+                                        }`}
+                                    />
+                                    {t(group.labelKey)}
+                                </span>
 
-                {errors.category ? (
-                    <p className="mt-1.5 text-sm text-danger-fg">
-                        {errors.category}
+                                <span className="mt-1.5 block text-sm text-foreground-muted">
+                                    {t(group.helpKey)}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {errors.categoryGroup ? (
+                    <p className="mt-2 text-sm text-danger-fg">
+                        {errors.categoryGroup}
                     </p>
+                ) : null}
+
+                {/* 2. Asama: alt kategori kartlari + aciklamalari */}
+                {selectedGroup ? (
+                    <div
+                        role="radiogroup"
+                        aria-label={t("addProduct.categoryStage2Label")}
+                        className="mt-5"
+                    >
+                        <p className="text-sm font-semibold">
+                            {t("addProduct.categoryStage2Label")}{" "}
+                            <span className="text-danger-solid">*</span>
+                        </p>
+
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            {selectedGroup.options.map((option) => {
+                                const isSelected = option.slug === categorySlug;
+
+                                return (
+                                    <label
+                                        key={option.slug}
+                                        className={`cursor-pointer rounded-xl border p-4 transition ${
+                                            isSelected
+                                                ? "border-primary bg-primary-soft"
+                                                : "border-border bg-surface hover:bg-surface-2"
+                                        }`}
+                                    >
+                                        <span className="flex items-start gap-2">
+                                            <input
+                                                type="radio"
+                                                name="product-category"
+                                                value={option.slug}
+                                                checked={isSelected}
+                                                onChange={() =>
+                                                    setCategorySlug(option.slug)
+                                                }
+                                                className="mt-1 size-4 accent-primary"
+                                            />
+
+                                            <span className="text-sm font-semibold">
+                                                {t(option.nameKey)}
+                                            </span>
+                                        </span>
+
+                                        <span className="mt-2 block text-sm text-foreground-muted">
+                                            {t(option.descriptionKey)}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+
+                        {errors.categoryItem ? (
+                            <p className="mt-2 text-sm text-danger-fg">
+                                {errors.categoryItem}
+                            </p>
+                        ) : (
+                            <p className="mt-2 text-sm text-foreground-subtle">
+                                {t("addProduct.categoryHelp")}
+                            </p>
+                        )}
+                    </div>
                 ) : (
-                    <p className="mt-1.5 text-sm text-foreground-subtle">
-                        {t("addProduct.categoryHelp")}
+                    <p className="mt-4 rounded-xl bg-surface-2 px-4 py-3 text-sm text-foreground-muted">
+                        {t("addProduct.categoryStage2Placeholder")}
                     </p>
                 )}
             </div>
@@ -463,44 +706,85 @@ export function ProductEntryForm() {
                 </div>
             </div>
 
-            {/* Gorsel baglantisi (opsiyonel) + onizleme */}
+            {/* Urun gorselleri: en fazla 5, telefonda galeriden/dosyadan secim */}
             <div>
-                <label
-                    htmlFor="product-image"
-                    className="mb-2 block text-sm font-semibold"
-                >
+                <p className="mb-2 block text-sm font-semibold">
                     {t("addProduct.fieldImage")}
-                </label>
+                </p>
 
-                <input
-                    id="product-image"
-                    name="image_url"
-                    type="url"
-                    value={imageUrl}
-                    onChange={(event) => setImageUrl(event.target.value)}
-                    placeholder={t("addProduct.imagePlaceholder")}
-                    maxLength={500}
-                    aria-invalid={Boolean(errors.imageUrl)}
-                    className={`w-full px-4 py-2.5 ${fieldErrorClasses(Boolean(errors.imageUrl))}`}
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={imageFiles.length >= MAX_IMAGES || uploadingImages}
+                    >
+                        {t("addProduct.imageUploadButton")}
+                    </Button>
 
-                {errors.imageUrl ? (
-                    <p className="mt-1.5 text-sm text-danger-fg">
-                        {errors.imageUrl}
-                    </p>
+                    <span className="text-sm text-foreground-muted">
+                        {t("addProduct.imageCount", { count: imageFiles.length })}
+                    </span>
+
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFilesSelected}
+                        className="hidden"
+                        aria-label={t("addProduct.fieldImage")}
+                    />
+                </div>
+
+                {imageErrors.length > 0 ? (
+                    <div className="mt-1.5 space-y-1">
+                        {imageErrors.map((imageError) => (
+                            <p
+                                key={imageError}
+                                className="text-sm text-danger-fg"
+                            >
+                                {imageError}
+                            </p>
+                        ))}
+                    </div>
                 ) : (
                     <p className="mt-1.5 text-sm text-foreground-subtle">
                         {t("addProduct.imageHelp")}
                     </p>
                 )}
 
-                {imageUrl.trim() !== "" && !errors.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={imageUrl.trim()}
-                        alt={t("addProduct.imagePreviewAlt")}
-                        className="mt-3 h-36 w-36 rounded-xl border border-border object-cover"
-                    />
+                {imagePreviews.length > 0 && (
+                    <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        {imagePreviews.map((preview, index) => (
+                            <li
+                                key={preview.url}
+                                className="relative overflow-hidden rounded-xl border border-border bg-surface"
+                            >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={preview.url}
+                                    alt={`${t("addProduct.imagePreviewAlt")} ${index + 1}`}
+                                    className="h-36 w-full object-cover"
+                                />
+
+                                {index === 0 && (
+                                    <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+                                        {t("addProduct.imageCoverBadge")}
+                                    </span>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => removeImage(index)}
+                                    aria-label={t("addProduct.imageRemove")}
+                                    className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-surface/90 text-foreground shadow-sm transition hover:bg-surface-2"
+                                >
+                                    ✕
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
                 )}
             </div>
 
@@ -509,10 +793,12 @@ export function ProductEntryForm() {
                     type="submit"
                     variant="primary"
                     size="lg"
-                    disabled={submitting}
+                    disabled={submitting || uploadingImages}
                 >
                     {submitting
-                        ? t("addProduct.submitting")
+                        ? uploadingImages
+                            ? t("addProduct.imageUploading")
+                            : t("addProduct.submitting")
                         : t("addProduct.submit")}
                 </Button>
             </div>

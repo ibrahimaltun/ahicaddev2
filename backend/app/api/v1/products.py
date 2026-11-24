@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.v1.auth import get_current_user, require_admin
+from app.api.v1.uploads import MEDIA_PUBLIC_PREFIX
 from app.db.session import get_db
 from app.models import Brand, Category, Product, ProductImage, User
 from app.schemas.product import (
@@ -36,6 +37,10 @@ MAX_PENDING_PER_USER = 10
 
 MAX_PRICE = 10000000
 MAX_STOCK = 1000000
+
+# Urun basina kaydedilebilecek maksimum gorsel sayisi (yukleme endpoint'i
+# ayni limiti uygular; kapak + 4 detay goruntusu).
+MAX_PRODUCT_IMAGES = 5
 
 
 def _utc_now() -> datetime:
@@ -99,6 +104,30 @@ def _unique_slug(db: Session, name: str) -> str:
     return slug
 
 
+def _validate_image_url(image_url: str) -> str:
+    """Tek gorsel baglantisini dogrular; temizlenmis degeri dondurur.
+
+    Iki gecerli bicim:
+    - http:// / https:// ile baslayan harici baglanti
+    - /api/v1/media/... (yukleme endpoint'inin dondurdugu sunucu yolu)
+    """
+    image_url = image_url.strip()
+
+    if image_url.lower().startswith(("http://", "https://")):
+        return image_url
+
+    if image_url.startswith(f"{MEDIA_PUBLIC_PREFIX}/"):
+        return image_url
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=(
+            "Görsel bağlantısı http:// veya https:// ile başlamalıdır "
+            "ya da yüklenmiş bir sunucu görseli olmalıdır"
+        ),
+    )
+
+
 def _validate_customer_product(
     db: Session,
     data: CustomerProductCreate,
@@ -137,14 +166,29 @@ def _validate_customer_product(
             detail="Geçersiz kategori",
         )
 
-    if data.image_url is not None:
-        image_url = data.image_url.strip()
+    image_url = data.image_url.strip() if data.image_url else None
+    image_urls = data.image_urls
 
-        if not image_url.lower().startswith(("http://", "https://")):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Görsel bağlantısı http:// veya https:// ile başlamalıdır",
-            )
+    if image_url is None and not image_urls:
+        return data
+
+    # Eski tek gorsel alanini listeyle birlestir; toplam 5 ile sinirli.
+    all_urls = ([image_url] if image_url else []) + image_urls
+
+    if len(all_urls) > MAX_PRODUCT_IMAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"En fazla {MAX_PRODUCT_IMAGES} görsel ekleyebilirsiniz",
+        )
+
+    if len(set(all_urls)) != len(all_urls):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aynı görseli iki kez ekleyemezsiniz",
+        )
+
+    data.image_url = _validate_image_url(all_urls[0])
+    data.image_urls = [_validate_image_url(url) for url in all_urls[1:]]
 
     return data
 
@@ -268,12 +312,18 @@ def create_customer_product(
         ),
     )
 
-    if data.image_url is not None:
+    # Gorseller: kapak (ilk) gorsel is_primary=True, kalanlari sort_order ile
+    # eklenir. _validate_customer_product zaten limit/bicim kontrolu yapti.
+    submitted_image_urls = (
+        [data.image_url] if data.image_url else []
+    ) + list(data.image_urls)
+
+    for sort_order, image_url_value in enumerate(submitted_image_urls):
         product.images.append(
             ProductImage(
-                image_url=data.image_url.strip(),
-                sort_order=0,
-                is_primary=True,
+                image_url=image_url_value,
+                sort_order=sort_order,
+                is_primary=sort_order == 0,
             )
         )
 

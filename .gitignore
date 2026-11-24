@@ -15,6 +15,9 @@ cookies.txt
 # Tests
 .pytest_cache/
 
+# Urun gorselleri (sunucuda dosya dizininde tutulur)
+backend/uploads/
+
 # Node
 node_modules/
 .next/

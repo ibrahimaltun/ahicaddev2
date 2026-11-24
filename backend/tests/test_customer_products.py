@@ -99,6 +99,86 @@ class TestCustomerProductSubmissions:
         # Bos gorsel kabul edilir (opsiyonel)
         assert _submit(customer, category["id"], image_url=None).status_code == 201
 
+    def test_submission_accepts_multiple_images(self, customer, admin):
+        category = _category(admin)
+
+        res = _submit(
+            customer,
+            category["id"],
+            image_url=None,
+            image_urls=[
+                "https://images.example.com/cicek-1.jpg",
+                "/api/v1/media/products/abc123.png",
+                "https://images.example.com/cicek-3.jpg",
+            ],
+        )
+
+        assert res.status_code == 201
+        images = res.json()["images"]
+        assert [image["image_url"] for image in images] == [
+            "https://images.example.com/cicek-1.jpg",
+            "/api/v1/media/products/abc123.png",
+            "https://images.example.com/cicek-3.jpg",
+        ]
+        assert images[0]["is_primary"] is True
+        assert images[1]["is_primary"] is False
+        assert images[2]["is_primary"] is False
+        # sort_order sirayla atanir.
+        assert [image["sort_order"] for image in images] == [0, 1, 2]
+
+    def test_submission_rejects_more_than_five_images(self, customer, admin):
+        category = _category(admin)
+
+        # 6 gorsel: sema seviyesinde (pydantic max_length=5) reddedilir.
+        res = _submit(
+            customer,
+            category["id"],
+            image_url=None,
+            image_urls=[f"https://images.example.com/gorsel-{i}.jpg" for i in range(6)],
+        )
+
+        assert res.status_code == 422
+
+    def test_submission_rejects_merged_image_limit(self, customer, admin):
+        """Eski tek gorsel alani + liste toplami 5'i asamaz (is mantigi -> 400)."""
+        category = _category(admin)
+
+        res = _submit(
+            customer,
+            category["id"],
+            image_url="https://images.example.com/kapak.jpg",
+            image_urls=[f"https://images.example.com/gorsel-{i}.jpg" for i in range(5)],
+        )
+
+        assert res.status_code == 400
+        assert "En fazla 5" in res.json()["detail"]
+
+    def test_submission_rejects_duplicate_images(self, customer, admin):
+        category = _category(admin)
+        url = "https://images.example.com/cicek.jpg"
+
+        res = _submit(
+            customer,
+            category["id"],
+            image_url=None,
+            image_urls=[url, url],
+        )
+
+        assert res.status_code == 400
+
+    def test_submission_rejects_invalid_relative_image_path(self, customer, admin):
+        category = _category(admin)
+
+        # /api/v1/media/ oneki disindaki goreceli yollar kabul edilmez.
+        res = _submit(
+            customer,
+            category["id"],
+            image_url=None,
+            image_urls=["/etc/passwd"],
+        )
+
+        assert res.status_code == 400
+
     def test_duplicate_slug_gets_suffix(self, customer, admin):
         category = _category(admin)
 

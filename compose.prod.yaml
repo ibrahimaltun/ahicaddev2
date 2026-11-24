@@ -38,6 +38,9 @@ services:
         condition: service_healthy
     expose:
       - "8000"
+    volumes:
+      # Urun gorselleri kapasite kaybi yasamadan yeniden kurulumde korunur.
+      - uploads_data:/app/uploads
     deploy:
       resources:
         limits:
@@ -88,5 +91,6 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
   caddy_data:
   caddy_config:
