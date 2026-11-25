@@ -430,6 +430,19 @@ export const tr = {
             "Doğrulama e-postası gönderildi. E-postanızı kontrol edin.",
         resendVerificationError:
             "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.",
+        registerSuccessOtp:
+            "Hesabınız oluşturuldu. Doğrulama kodunuz e-posta adresinize gönderildi.",
+        otpTitle: "E-posta Doğrulama",
+        otpDescription:
+            "{email} adresine 6 haneli bir doğrulama kodu gönderdik. Kodu aşağıya girin.",
+        otpLabel: "Doğrulama Kodu",
+        otpVerifyButton: "Doğrula ve Giriş Yap",
+        otpVerifying: "Doğrulanıyor...",
+        otpVerifySuccess:
+            "E-posta adresiniz doğrulandı! Giriş sayfasına yönlendiriliyorsunuz...",
+        otpVerifyError:
+            "Kod hatalı veya süresi dolmuş. Lütfen tekrar deneyin.",
+        otpResendHint: "Kodu almadınız mı? Giriş yaparak yeniden gönderebilirsiniz:",
     },
     account: {
         label: "Hesabım",
@@ -1144,6 +1157,19 @@ export const en: Dictionary = {
             "Verification email sent. Please check your inbox.",
         resendVerificationError:
             "The verification email could not be sent. Please try again.",
+        registerSuccessOtp:
+            "Your account has been created. A 6-digit verification code has been sent to your email.",
+        otpTitle: "Email Verification",
+        otpDescription:
+            "We sent a 6-digit verification code to {email}. Please enter it below.",
+        otpLabel: "Verification Code",
+        otpVerifyButton: "Verify & Continue",
+        otpVerifying: "Verifying...",
+        otpVerifySuccess:
+            "Your email has been verified! Redirecting you to login...",
+        otpVerifyError:
+            "The code is incorrect or has expired. Please try again.",
+        otpResendHint: "Didn't receive the code? Log in to request a new one:",
     },
     account: {
         label: "My Account",

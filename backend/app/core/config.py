@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # E-posta dogrulama / sifre sifirlama
     frontend_url: str = "http://localhost:3100"
-    email_backend: str = "console"  # "console" | "smtp"
+    email_backend: str = "smpt"  # "console" | "smtp"
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

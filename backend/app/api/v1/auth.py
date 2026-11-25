@@ -58,8 +58,17 @@ def _hash_token(token: str) -> str:
 
 
 def _issue_token(user: User, purpose: str) -> str:
-    """Tek kullanilikli token uretir; DB'ye sha256 ozeti + son gecerlilik yazar."""
-    token = secrets.token_urlsafe(32)
+    """Tek kullaniliklik token/OTP uretir; DB'ye sha256 ozeti + son gecerlilik yazar.
+
+    Dogrulama amacinda 6 haneli sayisal OTP, sifre sifirlama amacinda
+    URL-safe rastgele token uretilir.
+    """
+    if purpose == "verification":
+        # 6 haneli OTP: 100000-999999 araliginda rastgele sayi
+        token = str(secrets.randbelow(900000) + 100000)
+    else:
+        token = secrets.token_urlsafe(32)
+
     hashed = _hash_token(token)
     now = datetime.utcnow()
 
@@ -78,15 +87,16 @@ def _issue_token(user: User, purpose: str) -> str:
 
 
 def _send_verification_email(user: User, token: str) -> None:
-    link = f"{settings.frontend_url}/email-dogrula?token={token}"
+    """Kullaniciya 6 haneli OTP dogrulama kodunu e-posta olarak gonderir."""
     email_service.send(
         to=user.email,
-        subject="Ahicadde - E-posta doğrulama",
+        subject="Ahicadde - E-posta doğrulama kodunuz",
         body=(
-            "Merhaba,\n\n"
-            "Ahicadde hesabınızı doğrulamak için aşağıdaki bağlantıyı kullanın "
+            f"Merhaba {user.first_name},\n\n"
+            "Ahicadde hesabınızı doğrulamak için aşağıdaki 6 haneli kodu kullanın "
             f"({settings.email_verification_expire_hours} saat geçerli):\n\n"
-            f"{link}\n\n"
+            f"    {token}\n\n"
+            "Bu kodu kayıt sayfasındaki 'Doğrulama Kodu' alanına girin.\n\n"
             "Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz."
         ),
     )
